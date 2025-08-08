@@ -1,3 +1,5 @@
+# ai_edit/cli.py
+
 """
 Main CLI interface for ai-edit
 """
@@ -11,6 +13,8 @@ import click
 from . import __version__
 from .config.manager import ConfigManager
 
+# from .core.file_manager import FileManager
+
 
 @click.group()
 @click.version_option(version=__version__, prog_name="ai-edit")
@@ -22,6 +26,7 @@ def cli(ctx: click.Context, verbose: bool, debug: bool):
     ctx.ensure_object(dict)
     ctx.obj["verbose"] = verbose
     ctx.obj["debug"] = debug
+    ctx.obj["config_manager"] = ConfigManager()
 
     if debug:
         click.echo("Debug mode enabled", err=True)
@@ -55,17 +60,17 @@ def init(ctx: click.Context, force: bool):
             return
 
     try:
-        config_manager = ConfigManager()
+        config_manager = ctx.obj["config_manager"]
         config_manager.initialize_project(current_dir, force=force)
         click.echo("✓ Successfully initialized ai-edit")
         click.echo(f"✓ Created configuration file: {config_file}")
         click.echo()
         click.echo("Next steps:")
         click.echo("1. Configure Azure OpenAI credentials:")
-        click.echo("   ai-edit config set azure-endpoint 'https://your-resource.openai.azure.com/'")
-        click.echo("   ai-edit config set azure-key 'your-api-key'")
+        click.echo("   ai-edit config set azure.endpoint 'https://your-resource.openai.azure.com/'")
+        click.echo("   ai-edit config set azure.api_key 'your-api-key'")
         click.echo("2. Set your preferred model:")
-        click.echo("   ai-edit config set model-name 'gpt-4'")
+        click.echo("   ai-edit config set azure.model 'gpt-4'")
         click.echo("3. Start editing:")
         click.echo("   ai-edit 'Add error handling to the main function'")
 
@@ -89,7 +94,7 @@ def config_set(ctx: click.Context, key: str, value: str):
     verbose = ctx.obj.get("verbose", False)
 
     try:
-        config_manager = ConfigManager()
+        config_manager = ctx.obj["config_manager"]
         config_manager.set_config(key, value)
 
         if verbose:
@@ -108,7 +113,7 @@ def config_set(ctx: click.Context, key: str, value: str):
 def config_get(ctx: click.Context, key: str):
     """Get a configuration value"""
     try:
-        config_manager = ConfigManager()
+        config_manager = ctx.obj["config_manager"]
         value = config_manager.get_config(key)
 
         if value is not None:
@@ -127,7 +132,7 @@ def config_get(ctx: click.Context, key: str):
 def config_list(ctx: click.Context):
     """List all configuration values"""
     try:
-        config_manager = ConfigManager()
+        config_manager = ctx.obj["config_manager"]
         config_data = config_manager.get_all_config()
 
         if not config_data:
@@ -207,13 +212,26 @@ def status(ctx: click.Context):
 def edit(ctx: click.Context, description: str, dry_run: bool, backup: bool, interactive: bool):
     """Apply changes based on natural language description"""
     verbose = ctx.obj.get("verbose", False)
+    config_manager = ctx.obj["config_manager"]
 
     # Check if initialized
     current_dir = Path.cwd()
-    config_file = current_dir / ".ai-edit.yaml"
-    if not config_file.exists():
+    if not (current_dir / ".ai-edit.yaml").exists():
         click.echo("❌ ai-edit not initialized. Run 'ai-edit init' first.")
         sys.exit(1)
+
+    # Validate Azure configuration
+    if not config_manager.validate_config():
+        click.echo("❌ Azure OpenAI configuration is missing or invalid.", err=True)
+        click.echo(
+            "Please set 'azure.endpoint' and 'azure.api_key' using the 'config set' command.",
+            err=True,
+        )
+        sys.exit(1)
+
+    # Setup file manager
+    # backup_dir_name = config_manager.get_config("safety.backup_dir", ".ai-edit-backups")
+    # file_manager = FileManager(project_dir=current_dir, backup_dir=current_dir / backup_dir_name)
 
     if dry_run:
         click.echo("🔍 Dry-run mode: previewing changes...")
@@ -252,7 +270,7 @@ def main():
             # Insert 'edit' command
             sys.argv.insert(1, "edit")
 
-        cli()
+        cli(obj={})
     except KeyboardInterrupt:
         click.echo("\n⚠️  Operation cancelled by user", err=True)
         sys.exit(1)
