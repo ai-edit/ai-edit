@@ -201,8 +201,8 @@ def edit(ctx: click.Context, description: str, dry_run: bool, backup: bool, inte
     """Apply changes based on natural language description"""
     verbose = ctx.obj.get("verbose", False)
     config_manager = ctx.obj["config_manager"]
-
     current_dir = Path.cwd()
+
     if not (current_dir / ".ai-edit.yaml").exists():
         click.echo("❌ ai-edit not initialized. Run 'ai-edit init' first.")
         sys.exit(1)
@@ -230,8 +230,6 @@ def edit(ctx: click.Context, description: str, dry_run: bool, backup: bool, inte
         click.echo(f"❌ Error initializing AI client: {e}", err=True)
         sys.exit(1)
 
-    if dry_run:
-        click.echo("🔍 Dry-run mode: previewing changes...")
     if verbose:
         click.echo(f"Description: {description}")
         click.echo(f"Options: dry-run={dry_run}, backup={backup}, interactive={interactive}")
@@ -277,7 +275,35 @@ def edit(ctx: click.Context, description: str, dry_run: bool, backup: bool, inte
         for op in operations:
             click.echo(f" - Modify: {op['file_path']}")
 
-        click.echo("\n🚧 Next step: Apply these parsed changes to the files.")
+        if dry_run:
+            click.echo("\n🔍 Dry-run mode. The following changes would be applied:")
+            for op in operations:
+                click.echo("\n" + "=" * 20)
+                click.echo(f"File: {op['file_path']}")
+                click.echo("=" * 20)
+                click.echo(op["content"])
+            click.echo("\nNo files were changed.")
+            return
+
+        if interactive:
+            if not click.confirm(f"\nApply these {len(operations)} modification(s)?"):
+                click.echo("Changes cancelled by user.")
+                return
+
+        click.echo("\nApplying changes...")
+        for op in operations:
+            file_path = op["file_path"]
+            content = op["content"]
+
+            if backup:
+                backup_path = file_manager.create_backup(file_path)
+                if backup_path:
+                    click.echo(f" - Backed up '{file_path}'")
+
+            file_manager.apply_changes(file_path, content)
+            click.echo(f" - Applied changes to '{file_path}'")
+
+        click.echo("\n✅ All changes applied successfully.")
 
     except RuntimeError as e:
         click.echo(f"\n❌ {e}", err=True)
