@@ -4,6 +4,7 @@ Main CLI interface for ai-edit
 """
 
 import sys
+from importlib import resources
 from pathlib import Path
 from typing import Dict
 
@@ -14,6 +15,7 @@ from .config.manager import ConfigManager
 from .core.ai_client import AIClient
 from .core.context import ContextBuilder
 from .core.file_manager import FileManager
+from .utils.parser import parse_ai_response
 
 
 @click.group()
@@ -237,11 +239,20 @@ def edit(ctx: click.Context, description: str, dry_run: bool, backup: bool, inte
     click.echo("Building context...")
     context_str = context_builder.build_context()
 
-    prompt = f"""The user wants to make the following change: '{description}'
-
-Here is the context of the current repository: {context_str}
-
-Based on this, please provide the necessary file modifications."""
+    # --- Load prompt from template file using importlib.resources ---
+    try:
+        # This is the modern, correct way to access package data files.
+        prompt_template = (
+            resources.files("ai_edit")
+            .joinpath("prompts/edit_prompt.txt")
+            .read_text(encoding="utf-8")
+        )
+        prompt = prompt_template.replace("{{DESCRIPTION}}", description).replace(
+            "{{CONTEXT}}", context_str
+        )
+    except FileNotFoundError:
+        click.echo("Error: Could not find the prompt template file.", err=True)
+        sys.exit(1)
 
     if verbose:
         click.echo("--- Prompt ---\n" + prompt + "\n--- End Prompt ---")
@@ -249,11 +260,24 @@ Based on this, please provide the necessary file modifications."""
     try:
         click.echo("🤖 Contacting AI assistant...")
         ai_response = ai_client.get_completion(prompt)
-        click.echo("\n✅ AI Response Received:\n--------------------")
-        click.echo(ai_response)
-        click.echo("--------------------")
 
-        click.echo("\n🚧 Next step: Parse this response and apply changes to files.")
+        click.echo("\n✅ AI Response Received.")
+        if verbose:
+            click.echo("--------------------\n" + ai_response + "\n--------------------")
+
+        operations = parse_ai_response(ai_response)
+
+        if not operations:
+            click.echo("\nNo file modifications were suggested by the AI.")
+            if not verbose:
+                click.echo("AI's explanation:\n" + ai_response)
+            return
+
+        click.echo(f"\nFound {len(operations)} potential file modification(s): ")
+        for op in operations:
+            click.echo(f" - Modify: {op['file_path']}")
+
+        click.echo("\n🚧 Next step: Apply these parsed changes to the files.")
 
     except RuntimeError as e:
         click.echo(f"\n❌ {e}", err=True)

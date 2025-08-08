@@ -65,7 +65,8 @@ ai-edit = "ai_edit.cli:main"
 [tool.setuptools.packages.find]
 where = ["."]
 
-
+[tool.setuptools.package-data]
+ai_edit = ["prompts/*.txt"]
 
 [tool.black]
 line-length = 100
