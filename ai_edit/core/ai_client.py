@@ -40,14 +40,13 @@ class AIClient:
             The content of the AI's response.
         """
         try:
+            # Removed temperature=0.0 and top_p=1.0 to use the service's default values
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
                     {"role": "system", "content": "You are an expert AI programmer."},
                     {"role": "user", "content": prompt},
                 ],
-                temperature=0.0,  # We want deterministic output for code changes
-                top_p=1.0,
             )
             if response.choices:
                 return response.choices[0].message.content or ""

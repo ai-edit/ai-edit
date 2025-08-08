@@ -25,29 +25,29 @@
   - [x] Config validation and defaults
 
 ## Phase 2: Core Infrastructure
-- [ ] Azure OpenAI Integration
-  - [ ] Create `ai_edit/core/ai_client.py`
-  - [ ] Implement Azure OpenAI API client
-  - [ ] Handle authentication (API key, managed identity)
-  - [ ] Implement retry logic and error handling
-  - [ ] Support different models (GPT-4, GPT-3.5-turbo)
-  - [ ] Token counting and management
+- [x] Azure OpenAI Integration
+  - [x] Create `ai_edit/core/ai_client.py`
+  - [x] Implement Azure OpenAI API client
+  - [x] Handle authentication (API key, managed identity)
+  - [x] Implement retry logic and error handling
+  - [x] Support different models (GPT-4, GPT-3.5-turbo)
+  - [x] Token counting and management
 
-- [ ] Repository Context Building
-  - [ ] Create `ai_edit/core/context.py`
-  - [ ] Implement file discovery and filtering
-  - [ ] Build repository structure tree
-  - [ ] Extract relevant code snippets
-  - [ ] Handle large codebases (context window management)
-  - [ ] Implement ignore patterns (.gitignore, .ai-editignore)
+- [x] Repository Context Building
+  - [x] Create `ai_edit/core/context.py`
+  - [x] Implement file discovery and filtering
+  - [x] Build repository structure tree
+  - [x] Extract relevant code snippets
+  - [x] Handle large codebases (context window management)
+  - [x] Implement ignore patterns (.gitignore, .ai-editignore)
 
-- [ ] File Management System
-  - [ ] Create `ai_edit/core/file_manager.py`
-  - [ ] Implement safe file reading/writing
-  - [ ] File backup creation
-  - [ ] Atomic file operations
-  - [ ] Handle different file encodings
-  - [ ] File permission management
+- [x] File Management System
+  - [x] Create `ai_edit/core/file_manager.py`
+  - [x] Implement safe file reading/writing
+  - [x] File backup creation
+  - [x] Atomic file operations
+  - [x] Handle different file encodings
+  - [x] File permission management
 
 ## Phase 3: AI Processing Pipeline
 - [ ] Prompt Engineering
