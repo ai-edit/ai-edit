@@ -12,8 +12,8 @@ import click
 
 from . import __version__
 from .config.manager import ConfigManager
-
-# from .core.file_manager import FileManager
+from .core.context import ContextBuilder
+from .core.file_manager import FileManager
 
 
 @click.group()
@@ -229,9 +229,17 @@ def edit(ctx: click.Context, description: str, dry_run: bool, backup: bool, inte
         )
         sys.exit(1)
 
-    # Setup file manager
-    # backup_dir_name = config_manager.get_config("safety.backup_dir", ".ai-edit-backups")
-    # file_manager = FileManager(project_dir=current_dir, backup_dir=current_dir / backup_dir_name)
+    # Setup core components
+    backup_dir_name = config_manager.get_config("safety.backup_dir", ".ai-edit-backups")
+    file_manager = FileManager(project_dir=current_dir, backup_dir=current_dir / backup_dir_name)
+
+    context_builder = ContextBuilder(
+        project_dir=current_dir,
+        file_manager=file_manager,
+        ignore_patterns=config_manager.get_config("context.ignore_patterns", []),
+        max_files=config_manager.get_config("context.max_files", 50),
+        max_tokens=config_manager.get_config("context.max_tokens", 8000),
+    )
 
     if dry_run:
         click.echo("🔍 Dry-run mode: previewing changes...")
@@ -240,9 +248,16 @@ def edit(ctx: click.Context, description: str, dry_run: bool, backup: bool, inte
         click.echo(f"Description: {description}")
         click.echo(f"Options: dry-run={dry_run}, backup={backup}, interactive={interactive}")
 
-    # TODO: Implement actual AI editing logic
-    click.echo("🚧 AI editing functionality not yet implemented")
-    click.echo("This will be implemented in Phase 2 & 3")
+    click.echo("Building context...")
+    context_str = context_builder.build_context()
+
+    if verbose:
+        click.echo("--- Context ---")
+        click.echo(context_str)
+        click.echo("--- End Context ---")
+
+    # TODO: Implement AI Client and pass context to it
+    click.echo("🚧 AI client not yet implemented. Context is built but not sent.")
 
 
 # Default command - if no subcommand is provided and there's an argument, treat it as edit
