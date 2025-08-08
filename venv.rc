@@ -1,0 +1,16 @@
+# Function to toggle the project's virtual environment with `vv`
+# Add to ~/.bash_profile, ~/.bashrc for Bash, or ~/.zshrc for Zsh
+vv() {
+  # Check if a virtual environment is currently active
+  if [ -n "$VIRTUAL_ENV" ]; then
+    echo "Deactivating virtual environment..."
+    deactivate
+  # Else, check if the activate script exists in the current directory
+  elif [ -f "venv/bin/activate" ]; then
+    echo "Activating virtual environment..."
+    source "venv/bin/activate"
+  else
+    echo "Error: venv/bin/activate not found in the current directory."
+    return 1
+  fi
+}

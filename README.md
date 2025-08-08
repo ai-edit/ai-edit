@@ -48,9 +48,9 @@ pip install ai-edit
 
 2. **Configure Azure OpenAI credentials:**
    ```bash
-   ai-edit config set azure-endpoint "https://your-resource.openai.azure.com/"
-   ai-edit config set azure-key "your-api-key"
-   ai-edit config set model-name "gpt-5"
+   ai-edit config set azure.endpoint "https://your-resource.openai.azure.com/"
+   ai-edit config set azure.api_key "your-api-key"
+   ai-edit config set azure.model "gpt-5"
    ```
 
 3. **Make your first AI-powered edit:**
@@ -106,10 +106,10 @@ ai-edit --backup "Rewrite the authentication middleware"
 4. Configure ai-edit:
 
 ```bash
-ai-edit config set azure-endpoint "https://your-resource.openai.azure.com/"
-ai-edit config set azure-key "your-api-key"
+ai-edit config set azure.endpoint "https://your-resource.openai.azure.com/"
+ai-edit config set azure.api_key "your-api-key"
 ai-edit config set azure-api-version "2024-02-01"
-ai-edit config set model-name "gpt-5"
+ai-edit config set azure.model "gpt-5"
 ```
 
 ### Project Configuration
