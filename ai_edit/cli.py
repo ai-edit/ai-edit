@@ -269,7 +269,7 @@ def edit(ctx: click.Context, description: str, dry_run: bool, backup: bool, inte
     messages = [{"role": "system", "content": "You are an expert AI programmer."}]
     messages.append({"role": "user", "content": initial_prompt})
 
-    max_turns = 10  # Increase turns to allow for exploration
+    max_turns = 15  # Increase turns to allow for exploration
     ai_response_text = ""
 
     for turn in range(max_turns):

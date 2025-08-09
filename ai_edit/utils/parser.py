@@ -36,12 +36,16 @@ def _parse_code_blocks(response: str) -> List[Dict[str, Any]]:
 def _parse_tool_calls(response: str) -> List[Dict[str, Any]]:
     """Parses XML-formatted tool calls."""
     operations = []
+    # Use findall to capture all tool_call blocks
     pattern = re.compile(
         r"<tool_call>.*?<name>(.*?)</name>.*?<path>(.*?)</path>.*?</tool_call>", re.DOTALL
     )
-    for match in pattern.finditer(response):
-        tool_name = match.group(1).strip()
-        file_path = match.group(2).strip()
+
+    matches = pattern.findall(response)
+    for tool_name, file_path in matches:
+        tool_name = tool_name.strip()
+        file_path = file_path.strip()
         if tool_name in ["read_file", "list_files"]:
             operations.append({"type": tool_name, "path": file_path})
+
     return operations
