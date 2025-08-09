@@ -79,9 +79,22 @@ ai-edit "Extract the database connection logic into a separate utility class"
 ai-edit "Fix the memory leak in the image processing function"
 ```
 
+### Safety Features
+
+```bash
+# Preview changes without applying them
+ai-edit --dry-run "Optimize database queries in the analytics service"
+
+# Interactive mode with confirmations
+ai-edit --interactive "Refactor the entire user management system"
+
+# Create backup before changes
+ai-edit --backup "Rewrite the authentication middleware"
+```
+
 ## Configuration
 
-Create a `.ai-edit.yaml` file in your project root or use the `config set` command. The configuration supports setting the model, context rules, and safety defaults.
+Configuration is handled via the `.ai-edit.yaml` file in your project's root. You can edit it directly or use the `ai-edit config set` command.
 
 ```yaml
 # AI model configuration
@@ -89,6 +102,10 @@ azure:
   endpoint: "https://sfo.openai.azure.com/"
   model: "o3"
   api_version: "2025-01-01-preview"
+
+# Agent settings for multi-turn conversations
+agent:
+  max_turns: 15
 
 # Context settings
 context:

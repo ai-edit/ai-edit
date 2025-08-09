@@ -15,6 +15,10 @@ class ConfigManager:
     DEFAULT_CONFIG = {
         # Azure OpenAI settings
         "azure": {"endpoint": None, "api_key": None, "api_version": "2024-02-01", "model": "gpt-4"},
+        # Agent settings
+        "agent": {
+            "max_turns": 15,
+        },
         # Context settings
         "context": {
             "max_files": 50,
@@ -151,7 +155,7 @@ class ConfigManager:
 
         # Convert string values for known types
         final_key = keys[-1]
-        if key in ["context.max_files", "context.max_tokens"]:
+        if key in ["context.max_files", "context.max_tokens", "agent.max_turns"]:
             value = int(value)
         elif key in [
             "safety.require_confirmation",

@@ -14,28 +14,68 @@ def parse_ai_response(response: str) -> List[Dict[str, Any]]:
     Returns:
         A list of operation dictionaries.
     """
-    code_ops = _parse_code_blocks(response)
     tool_ops = _parse_tool_calls(response)
-
+    # Prioritize tool calls. If the AI is asking for a tool, don't apply code yet.
     if tool_ops:
         return tool_ops
+
+    # If no tool calls, parse for the final code block modifications.
+    code_ops = _parse_code_blocks(response)
     return code_ops
 
 
 def _parse_code_blocks(response: str) -> List[Dict[str, Any]]:
-    """Parses fenced code blocks for file modifications."""
-    operations = []
-    pattern = re.compile(r"```(?:\w+:)?(.+?)\n(.*?)\n```", re.DOTALL)
-    for match in pattern.finditer(response):
-        file_path = match.group(1).strip()
-        content = match.group(2).strip()
-        operations.append({"type": "modify_file", "path": file_path, "content": content})
+    """
+    Parses fenced code blocks for file modifications using a line-by-line approach
+    with fence counting to correctly handle nested code blocks.
+    """
+    operations: List[Dict[str, Any]] = []
+    lines = response.split("\n")
+    in_file_block = False
+    current_content: List[str] = []
+    current_path = ""
+    fence_level = 0
+
+    file_block_pattern = re.compile(r"```(?:\w+:)(.+)")
+
+    for line in lines:
+        if not in_file_block:
+            match = file_block_pattern.match(line)
+            if match:
+                # Start of a new file modification block at level 0
+                in_file_block = True
+                current_path = match.group(1).strip()
+                fence_level = 1
+        elif in_file_block:
+            # Check for opening or closing fences to manage nesting level
+            if line.strip().startswith("```"):
+                if line.strip() == "```":
+                    fence_level -= 1
+                else:  # Handles ```bash etc.
+                    fence_level += 1
+
+            # If we've returned to level 0, the main block is closed
+            if fence_level == 0:
+                operations.append(
+                    {
+                        "type": "modify_file",
+                        "path": current_path,
+                        "content": "\n".join(current_content).strip(),
+                    }
+                )
+                # Reset for the next potential file block
+                in_file_block = False
+                current_content = []
+                current_path = ""
+            else:
+                current_content.append(line)
+
     return operations
 
 
 def _parse_tool_calls(response: str) -> List[Dict[str, Any]]:
     """Parses XML-formatted tool calls."""
-    operations = []
+    operations: List[Dict[str, Any]] = []
     # Use findall to capture all tool_call blocks
     pattern = re.compile(
         r"<tool_call>.*?<name>(.*?)</name>.*?<path>(.*?)</path>.*?</tool_call>", re.DOTALL

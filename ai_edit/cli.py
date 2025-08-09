@@ -213,13 +213,14 @@ def status(ctx: click.Context):
 def edit(ctx: click.Context, description: str, dry_run: bool, backup: bool, interactive: bool):
     """Apply changes based on natural language description"""
     verbose = ctx.obj.get("verbose", False)
+    debug = ctx.obj.get("debug", False)
     config_manager = ctx.obj["config_manager"]
     current_dir = Path.cwd()
 
+    # --- Initialization Block ---
     if not (current_dir / ".ai-edit.yaml").exists():
         click.echo("❌ ai-edit not initialized. Run 'ai-edit init' first.")
         sys.exit(1)
-
     if not config_manager.validate_config():
         click.echo("❌ Azure OpenAI configuration is missing or invalid.", err=True)
         click.echo(
@@ -227,10 +228,10 @@ def edit(ctx: click.Context, description: str, dry_run: bool, backup: bool, inte
             err=True,
         )
         sys.exit(1)
-
     file_manager = FileManager(
         project_dir=current_dir,
         backup_dir=current_dir / config_manager.get_config("safety.backup_dir", ".ai-edit-backups"),
+        debug=debug,
     )
     context_builder = ContextBuilder(
         project_dir=current_dir,
@@ -265,22 +266,26 @@ def edit(ctx: click.Context, description: str, dry_run: bool, backup: bool, inte
         click.echo("Error: Could not find the prompt template file.", err=True)
         sys.exit(1)
 
-    # --- Conversation Loop ---
-    messages = [{"role": "system", "content": "You are an expert AI programmer."}]
-    messages.append({"role": "user", "content": initial_prompt})
-
-    max_turns = 15  # Increase turns to allow for exploration
+    # --- NEW: More Efficient Conversation Management ---
+    system_prompt = "You are an expert AI programmer. Your task is to modify a codebase based on a user's request."
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": initial_prompt},
+    ]
+    # Use the configurable max_turns value
+    max_turns = config_manager.get_config("agent.max_turns", 15)
     ai_response_text = ""
 
     for turn in range(max_turns):
         if verbose:
             click.echo("\n--- Sending Request to AI ---")
-            for msg in messages:
+            # Only log the last 2 messages for brevity in follow-up turns
+            log_messages = messages if turn == 0 else messages[-2:]
+            for msg in log_messages:
                 click.echo(f"Role: {msg['role']}\nContent: {msg['content']}\n")
             click.echo("--------------------------")
 
         click.echo(f"🤖 Contacting AI assistant (Turn {turn + 1}/{max_turns})...")
-
         try:
             ai_response_text = ai_client.get_completion(messages)
             messages.append({"role": "assistant", "content": ai_response_text})
@@ -293,7 +298,6 @@ def edit(ctx: click.Context, description: str, dry_run: bool, backup: bool, inte
             click.echo("--------------------\n" + ai_response_text + "\n--------------------")
 
         operations = parse_ai_response(ai_response_text)
-
         if not operations or all(op.get("type") == "modify_file" for op in operations):
             click.echo("\nAI has provided the final modifications.")
             break
@@ -302,7 +306,6 @@ def edit(ctx: click.Context, description: str, dry_run: bool, backup: bool, inte
         for op in operations:
             tool_type = op.get("type")
             file_path = op.get("path")
-
             if tool_type == "read_file":
                 click.echo(f" - AI wants to read file: {file_path}")
                 try:
@@ -316,7 +319,6 @@ def edit(ctx: click.Context, description: str, dry_run: bool, backup: bool, inte
                     tool_outputs.append(
                         f"<tool_output><path>{file_path}</path><error>{e}</error></tool_output>"
                     )
-
             elif tool_type == "list_files":
                 click.echo(f" - AI wants to list files in: {file_path}")
                 try:
@@ -333,20 +335,21 @@ def edit(ctx: click.Context, description: str, dry_run: bool, backup: bool, inte
                     tool_outputs.append(
                         f"<tool_output><path>{file_path}</path><error>{e}</error></tool_output>"
                     )
-
         if tool_outputs:
+            # Condense the conversation history to avoid confusion
             messages.append({"role": "user", "content": "\n".join(tool_outputs)})
 
         if turn == max_turns - 1:
             click.echo("\n⚠️  Max conversation turns reached. Aborting.")
+            click.echo(
+                "   Consider increasing the number of turns allowed by setting 'agent.max_turns' in your .ai-edit.yaml file."
+            )
             return
 
-    # --- End of Conversation Loop ---
-
+    # --- Final Application Block (Unchanged) ---
     final_operations = [
         op for op in parse_ai_response(ai_response_text) if op.get("type") == "modify_file"
     ]
-
     if not final_operations:
         click.echo("\nNo file modifications were suggested by the AI.")
         if not verbose:
@@ -373,19 +376,38 @@ def edit(ctx: click.Context, description: str, dry_run: bool, backup: bool, inte
             return
 
     click.echo("\nApplying changes...")
-    for op in final_operations:
-        file_path = op["path"]
-        content = op["content"]
+    try:
+        for op in final_operations:
+            file_path = op["path"]
+            content = op["content"]
+            if debug:
+                click.echo(f"DEBUG: Processing operation for path: {file_path}")
 
-        if backup:
-            backup_path = file_manager.create_backup(file_path)
-            if backup_path:
-                click.echo(f" - Backed up '{file_path}'")
+            if backup:
+                if debug:
+                    click.echo(f"DEBUG: Creating backup for {file_path}...")
+                backup_path = file_manager.create_backup(file_path)
+                if backup_path:
+                    click.echo(f" - Backed up '{file_path}'")
 
-        file_manager.apply_changes(file_path, content)
-        click.echo(f" - Applied changes to '{file_path}'")
+            if debug:
+                click.echo(f"DEBUG: Calling file_manager.apply_changes for {file_path}...")
 
-    click.echo("\n✅ All changes applied successfully.")
+            file_manager.apply_changes(file_path, content)
+
+            if debug:
+                click.echo(f"DEBUG: Returned from file_manager.apply_changes for {file_path}.")
+
+            click.echo(f" - Applied changes to '{file_path}'")
+
+        click.echo("\n✅ All changes applied successfully.")
+    except Exception as e:
+        click.echo(f"\n❌ An unexpected error occurred during file application: {e}", err=True)
+        if debug:
+            import traceback
+
+            traceback.print_exc()
+        sys.exit(1)
 
 
 @cli.command(hidden=True, context_settings={"ignore_unknown_options": True})

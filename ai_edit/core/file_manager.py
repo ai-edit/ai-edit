@@ -2,46 +2,30 @@
 """
 Handles safe file operations for ai-edit
 """
-
-import difflib
 import shutil
 from pathlib import Path
 from typing import Optional
 
-from ai_edit.utils.git import apply_diff, get_repo
+import click
 
 
 class FileManager:
     """Manages file reading, writing, and backups"""
 
-    def __init__(self, project_dir: Path, backup_dir: Path):
+    def __init__(self, project_dir: Path, backup_dir: Path, debug: bool = False):
         """
         Initialize the file manager
-
-        Args:
-            project_dir: The root directory of the project.
-            backup_dir: The directory where backups will be stored.
         """
         self.project_dir = project_dir
         self.backup_dir = backup_dir
-        try:
-            self.repo = get_repo(project_dir)
-        except Exception:
-            self.repo = None
+        self.debug = debug
 
     def get_file_contents(self, file_path: str) -> str:
         """
         Safely read the contents of a file
-
-        Args:
-            file_path: Relative path to the file within the project.
-
-        Returns:
-            The content of the file as a string.
         """
         full_path = self.project_dir / file_path
         if not full_path.is_file():
-            # Return empty string if file doesn't exist, to allow for new file creation
             return ""
 
         try:
@@ -53,12 +37,6 @@ class FileManager:
     def create_backup(self, file_path: str) -> Optional[Path]:
         """
         Create a backup of a file
-
-        Args:
-            file_path: Relative path to the file to back up.
-
-        Returns:
-            The path to the created backup file, or None if the file doesn't exist.
         """
         source_path = self.project_dir / file_path
         if not source_path.is_file():
@@ -72,42 +50,15 @@ class FileManager:
 
     def apply_changes(self, file_path: str, new_content: str) -> None:
         """
-        Generates a diff and applies it as a patch to the file.
-        Falls back to overwriting if not in a Git repo or if it's a new file.
-
-        Args:
-            file_path: Relative path to the file to be modified.
-            new_content: The new content for the file.
+        Writes the new content to the specified file, overwriting it.
         """
         full_path = self.project_dir / file_path
-        original_content = self.get_file_contents(file_path)
+        if self.debug:
+            click.echo(f"DEBUG: Overwriting file '{file_path}' directly.")
 
-        # If not a git repo, or if it's a new file, just write the content directly.
-        if not self.repo or not original_content:
-            full_path.parent.mkdir(parents=True, exist_ok=True)
-            try:
-                with open(full_path, "w", encoding="utf-8") as f:
-                    f.write(new_content)
-            except Exception as e:
-                raise IOError(f"Error writing to file {file_path}: {e}")
-            return
-
-        # Generate a unified diff
-        diff = "".join(
-            difflib.unified_diff(
-                original_content.splitlines(keepends=True),
-                new_content.splitlines(keepends=True),
-                fromfile=f"a/{file_path}",
-                tofile=f"b/{file_path}",
-            )
-        )
-
-        if not diff:
-            # No changes detected
-            return
-
-        # Apply the diff using git
+        full_path.parent.mkdir(parents=True, exist_ok=True)
         try:
-            apply_diff(self.repo, diff)
+            with open(full_path, "w", encoding="utf-8") as f:
+                f.write(new_content)
         except Exception as e:
-            raise IOError(f"Failed to apply diff to {file_path}: {e}")
+            raise IOError(f"Error writing to file {file_path}: {e}")
