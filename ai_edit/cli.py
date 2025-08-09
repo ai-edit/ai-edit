@@ -34,6 +34,11 @@ def cli(ctx: click.Context, verbose: bool, debug: bool):
         click.echo("Debug mode enabled", err=True)
 
 
+# ai_edit/cli.py
+
+# ... (imports and other functions are unchanged) ...
+
+
 @cli.command()
 @click.option(
     "--force", "-f", is_flag=True, help="Force initialization even if already initialized"
@@ -69,14 +74,22 @@ def init(ctx: click.Context, force: bool):
         click.echo("1. Configure Azure OpenAI credentials:")
         click.echo("   ai-edit config set azure.endpoint 'https://your-resource.openai.azure.com/'")
         click.echo("   ai-edit config set azure.api_key 'your-api-key'")
+        click.echo("   ai-edit config set azure.api_version '2025-01-01-preview'")
         click.echo("2. Set your preferred model:")
-        click.echo("   ai-edit config set azure.model 'gpt-4'")
-        click.echo("3. Start editing:")
+        click.echo("   ai-edit config set azure.model 'o3'")
+        click.echo(
+            "\n3. ⚠️ IMPORTANT: Add the config file to your .gitignore to protect your API key:"
+        )
+        click.echo('   echo ".ai-edit.yaml" >> .gitignore')
+        click.echo("\n4. Start editing:")
         click.echo("   ai-edit 'Add error handling to the main function'")
 
     except Exception as e:
         click.echo(f"Error during initialization: {e}", err=True)
         sys.exit(1)
+
+
+# ... (the rest of the file remains the same) ...
 
 
 @cli.group()

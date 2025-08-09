@@ -3,9 +3,12 @@
 Handles safe file operations for ai-edit
 """
 
+import difflib
 import shutil
 from pathlib import Path
 from typing import Optional
+
+from ai_edit.utils.git import apply_diff, get_repo
 
 
 class FileManager:
@@ -21,6 +24,10 @@ class FileManager:
         """
         self.project_dir = project_dir
         self.backup_dir = backup_dir
+        try:
+            self.repo = get_repo(project_dir)
+        except Exception:
+            self.repo = None
 
     def get_file_contents(self, file_path: str) -> str:
         """
@@ -34,7 +41,8 @@ class FileManager:
         """
         full_path = self.project_dir / file_path
         if not full_path.is_file():
-            raise FileNotFoundError(f"File not found: {file_path}")
+            # Return empty string if file doesn't exist, to allow for new file creation
+            return ""
 
         try:
             with open(full_path, "r", encoding="utf-8") as f:
@@ -64,17 +72,42 @@ class FileManager:
 
     def apply_changes(self, file_path: str, new_content: str) -> None:
         """
-        Write new content to a file
+        Generates a diff and applies it as a patch to the file.
+        Falls back to overwriting if not in a Git repo or if it's a new file.
 
         Args:
             file_path: Relative path to the file to be modified.
-            new_content: The new content to write to the file.
+            new_content: The new content for the file.
         """
         full_path = self.project_dir / file_path
-        full_path.parent.mkdir(parents=True, exist_ok=True)
+        original_content = self.get_file_contents(file_path)
 
+        # If not a git repo, or if it's a new file, just write the content directly.
+        if not self.repo or not original_content:
+            full_path.parent.mkdir(parents=True, exist_ok=True)
+            try:
+                with open(full_path, "w", encoding="utf-8") as f:
+                    f.write(new_content)
+            except Exception as e:
+                raise IOError(f"Error writing to file {file_path}: {e}")
+            return
+
+        # Generate a unified diff
+        diff = "".join(
+            difflib.unified_diff(
+                original_content.splitlines(keepends=True),
+                new_content.splitlines(keepends=True),
+                fromfile=f"a/{file_path}",
+                tofile=f"b/{file_path}",
+            )
+        )
+
+        if not diff:
+            # No changes detected
+            return
+
+        # Apply the diff using git
         try:
-            with open(full_path, "w", encoding="utf-8") as f:
-                f.write(new_content)
+            apply_diff(self.repo, diff)
         except Exception as e:
-            raise IOError(f"Error writing to file {file_path}: {e}")
+            raise IOError(f"Failed to apply diff to {file_path}: {e}")
