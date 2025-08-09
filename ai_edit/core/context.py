@@ -59,36 +59,32 @@ class ContextBuilder:
         return PathSpec.from_lines(GitWildMatchPattern, patterns)
 
     def _get_repo_structure(self) -> str:
-        """Generate a string representing the repository's file tree."""
+        """
+        Generate a string representing the repository's root files and directory tree.
+        """
         lines = []
-        for path in sorted(self.project_dir.rglob("*")):
+        # First, list all files in the root directory
+        for path in sorted(self.project_dir.iterdir()):
             if not self._ignore_spec.match_file(str(path.relative_to(self.project_dir))):
-                depth = len(path.relative_to(self.project_dir).parts) - 1
-                indent = "    " * depth
+                if path.is_file():
+                    lines.append(f"└── {path.name}")
+
+        # Then, list all directories
+        for path in sorted(self.project_dir.iterdir()):
+            if not self._ignore_spec.match_file(str(path.relative_to(self.project_dir))):
                 if path.is_dir():
-                    lines.append(f"{indent}├── {path.name}/")
-                else:
-                    lines.append(f"{indent}└── {path.name}")
+                    lines.append(f"├── {path.name}/")
+
         return "\n".join(lines)
 
     def build_context(self) -> str:
         """
-        Build the full context string to be sent to the AI.
-
-        Returns:
-            A string containing the repository overview and file contents.
+        Build the initial, high-level context string to be sent to the AI.
         """
         repo_structure = self._get_repo_structure()
         context_parts = [
-            "Repository file structure:",
+            "Repository root structure:",
             "==========================",
             repo_structure,
-            "\nSelected file contents:",
-            "==========================",
         ]
-
-        # In a real scenario, we would intelligently select files.
-        # For now, we'll just show the structure.
-        # The file content part will be expanded in Phase 3.
-
         return "\n".join(context_parts)

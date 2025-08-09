@@ -269,7 +269,7 @@ def edit(ctx: click.Context, description: str, dry_run: bool, backup: bool, inte
     messages = [{"role": "system", "content": "You are an expert AI programmer."}]
     messages.append({"role": "user", "content": initial_prompt})
 
-    max_turns = 5  # Safety brake to prevent infinite loops
+    max_turns = 10  # Increase turns to allow for exploration
     ai_response_text = ""
 
     for turn in range(max_turns):
@@ -294,16 +294,17 @@ def edit(ctx: click.Context, description: str, dry_run: bool, backup: bool, inte
 
         operations = parse_ai_response(ai_response_text)
 
-        if not operations or all(op.get("type") != "read_file" for op in operations):
+        if not operations or all(op.get("type") == "modify_file" for op in operations):
             click.echo("\nAI has provided the final modifications.")
             break
 
-        click.echo("AI is requesting to read files...")
         tool_outputs = []
         for op in operations:
-            if op.get("type") == "read_file":
-                file_path = op["path"]
-                click.echo(f" - Reading file: {file_path}")
+            tool_type = op.get("type")
+            file_path = op.get("path")
+
+            if tool_type == "read_file":
+                click.echo(f" - AI wants to read file: {file_path}")
                 try:
                     content = file_manager.get_file_contents(file_path)
                     if not content:
@@ -312,6 +313,23 @@ def edit(ctx: click.Context, description: str, dry_run: bool, backup: bool, inte
                         f"<tool_output><path>{file_path}</path><content>{content}</content></tool_output>"
                     )
                 except IOError as e:
+                    tool_outputs.append(
+                        f"<tool_output><path>{file_path}</path><error>{e}</error></tool_output>"
+                    )
+
+            elif tool_type == "list_files":
+                click.echo(f" - AI wants to list files in: {file_path}")
+                try:
+                    full_path = current_dir / file_path
+                    if full_path.is_dir():
+                        dir_contents = [p.name for p in sorted(full_path.iterdir())]
+                        content = "\n".join(dir_contents)
+                    else:
+                        content = f"Error: '{file_path}' is not a valid directory."
+                    tool_outputs.append(
+                        f"<tool_output><path>{file_path}</path><content>{content}</content></tool_output>"
+                    )
+                except Exception as e:
                     tool_outputs.append(
                         f"<tool_output><path>{file_path}</path><error>{e}</error></tool_output>"
                     )

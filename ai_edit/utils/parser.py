@@ -17,7 +17,6 @@ def parse_ai_response(response: str) -> List[Dict[str, Any]]:
     code_ops = _parse_code_blocks(response)
     tool_ops = _parse_tool_calls(response)
 
-    # Prioritize tool calls. If the AI is asking for a tool, don't apply code yet.
     if tool_ops:
         return tool_ops
     return code_ops
@@ -43,6 +42,6 @@ def _parse_tool_calls(response: str) -> List[Dict[str, Any]]:
     for match in pattern.finditer(response):
         tool_name = match.group(1).strip()
         file_path = match.group(2).strip()
-        if tool_name == "read_file":
-            operations.append({"type": "read_file", "path": file_path})
+        if tool_name in ["read_file", "list_files"]:
+            operations.append({"type": tool_name, "path": file_path})
     return operations
