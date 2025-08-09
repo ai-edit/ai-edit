@@ -1,3 +1,5 @@
+### `README.md`
+
 # ai-edit
 
 A command-line AI code editor that uses Azure OpenAI to make intelligent changes to your codebase through natural language instructions.
@@ -8,21 +10,21 @@ A command-line AI code editor that uses Azure OpenAI to make intelligent changes
 
 ## Features
 
-- **Natural Language Interface**: Describe changes in plain English
-- **Azure OpenAI Integration**: Leverages GPT-5 and other Azure AI models
-- **Repository Context Awareness**: Understands your codebase structure and patterns
-- **Safety First**: Dry-run mode, backups, and confirmations before changes
-- **Git Integration**: Tracks changes and integrates with your version control workflow
-- **Multi-file Operations**: Can modify multiple files in a single operation
-- **Smart Context Building**: Automatically includes relevant code context
+  - **Natural Language Interface**: Describe changes in plain English.
+  - **Azure OpenAI Integration**: Leverages models deployed on Azure AI.
+  - **Repository Context Awareness**: Understands your codebase structure to inform the AI.
+  - **Safety First**: Includes a dry-run mode, backups, and interactive confirmation before applying changes.
+  - **Uses Git for Precise Patching**: Generates `diffs` and applies them using Git to preserve file formatting and make precise changes.
+  - **Multi-file Operations**: Can parse and apply changes to multiple files in a single operation.
+  - **Externalized Prompts**: Manages prompts in external files for easier customization.
 
 ## Installation
 
 ### Prerequisites
 
-- Python 3.8 or higher
-- Git (for repository management)
-- Azure OpenAI API access
+  - Python 3.8 or higher
+  - Git (for repository management)
+  - Azure OpenAI API access
 
 ### Install from Source
 
@@ -32,35 +34,40 @@ cd ai-edit
 pip install -e .
 ```
 
-### Install from PyPI (coming soon)
-
-```bash
-pip install ai-edit
-```
-
 ## Quick Start
 
-1. **Initialize in your project directory:**
-   ```bash
-   cd ai-edit
-   ai-edit init
-   ```
+1.  **Initialize in your project directory:**
 
-2. **Configure Azure OpenAI credentials:**
-   ```bash
-   ai-edit config set azure.endpoint "https://your-resource.openai.azure.com/"
-   ai-edit config set azure.api_key "your-api-key"
-   ai-edit config set azure.model "gpt-5"
-   ```
+    ```bash
+    cd your-project/
+    ai-edit init
+    ```
 
-3. **Make your first AI-powered edit:**
-   ```bash
-   ai-edit "Add error handling to the user login function"
-   ```
+2.  **Configure Azure OpenAI credentials:**
+
+    ```bash
+    ai-edit config set azure.endpoint "https://sfo.openai.azure.com/"
+    ai-edit config set azure.api_key "your-api-key"
+    ai-edit config set azure.api_version "2025-01-01-preview"
+    ai-edit config set azure.model "o3"
+    ```
+
+    > **⚠️ Security Warning:** The `.ai-edit.yaml` file now contains your secret Azure OpenAI API key. Add this file to your project's `.gitignore` to prevent accidentally committing your credentials to version control.
+
+    > ```bash
+    > echo ".ai-edit.yaml" >> .gitignore
+    > ```
+
+3.  **Make your first AI-powered edit:**
+
+    ```bash
+    ai-edit "Add error handling to the user login function"
+    ```
 
 ## Usage Examples
 
 ### Basic Code Modifications
+
 ```bash
 # Add functionality
 ai-edit "Add input validation to the email field in user registration"
@@ -72,56 +79,16 @@ ai-edit "Extract the database connection logic into a separate utility class"
 ai-edit "Fix the memory leak in the image processing function"
 ```
 
-### Advanced Operations
-```bash
-# Multiple file changes
-ai-edit "Implement user authentication across all API endpoints"
-
-# Add tests
-ai-edit "Create comprehensive unit tests for the payment processing module"
-
-# Documentation
-ai-edit "Add detailed docstrings to all public methods in the API module"
-```
-
-### Safety Features
-```bash
-# Preview changes without applying them
-ai-edit --dry-run "Optimize database queries in the analytics service"
-
-# Interactive mode with confirmations
-ai-edit --interactive "Refactor the entire user management system"
-
-# Create backup before changes
-ai-edit --backup "Rewrite the authentication middleware"
-```
-
 ## Configuration
 
-### Azure OpenAI Setup
-
-1. Create an Azure OpenAI resource in the Azure portal
-2. Deploy a model (GPT-5 recommended)
-3. Get your endpoint URL and API key
-4. Configure ai-edit:
-
-```bash
-ai-edit config set azure.endpoint "https://your-resource.openai.azure.com/"
-ai-edit config set azure.api_key "your-api-key"
-ai-edit config set azure-api-version "2024-02-01"
-ai-edit config set azure.model "gpt-5"
-```
-
-### Project Configuration
-
-Create a `.ai-edit.yaml` file in your project root:
+Create a `.ai-edit.yaml` file in your project root or use the `config set` command. The configuration supports setting the model, context rules, and safety defaults.
 
 ```yaml
 # AI model configuration
 azure:
-  endpoint: "https://your-resource.openai.azure.com/"
-  model: "gpt-5"
-  api_version: "2024-02-01"
+  endpoint: "https://sfo.openai.azure.com/"
+  model: "o3"
+  api_version: "2025-01-01-preview"
 
 # Context settings
 context:
@@ -130,33 +97,32 @@ context:
   ignore_patterns:
     - "node_modules/**"
     - "*.log"
-    - "*.tmp"
-    - "__pycache__/**"
 
 # Safety settings
 safety:
   require_confirmation: true
   create_backups: true
-  dry_run_default: false
 ```
 
 ## Command Reference
 
 ### Core Commands
-- `ai-edit init` - Initialize ai-edit in current directory
-- `ai-edit "description"` - Apply changes based on description
-- `ai-edit status` - Show repository analysis and context
+
+  - `ai-edit init` - Initialize ai-edit in the current directory.
+  - `ai-edit "description"` - Apply changes based on a natural language description.
+  - `ai-edit status` - Show repository analysis and context.
 
 ### Configuration
-- `ai-edit config set <key> <value>` - Set configuration value
-- `ai-edit config get <key>` - Get configuration value
-- `ai-edit config list` - List all configuration
+
+  - `ai-edit config set <key> <value>` - Set a configuration value.
+  - `ai-edit config get <key>` - Get a configuration value.
+  - `ai-edit config list` - List all current configuration settings.
 
 ### Safety & Utilities
-- `ai-edit --dry-run "description"` - Preview changes without applying
-- `ai-edit --backup "description"` - Create backup before changes
-- `ai-edit rollback` - Rollback last changes
-- `ai-edit history` - Show change history
+
+  - `ai-edit --dry-run "description"` - Preview changes without applying them.
+  - `ai-edit --interactive "description"` - Request confirmation before applying changes.
+  - `ai-edit --backup "description"` - Create a backup of files before changes are applied.
 
 ## Development
 
@@ -169,6 +135,32 @@ python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -e ".[dev]"
 ```
+
+### Development Shortcut (Optional)
+
+This project includes a `venv.rc` file which contains a shell function to quickly activate or deactivate the virtual environment.
+
+1.  **Add the function to your shell profile.** Choose the command for your shell (e.g., `.bashrc`, `.zshrc`).
+
+    ```bash
+    # For Zsh users:
+    cat venv.rc >> ~/.zshrc
+
+    # For Bash users:
+    cat venv.rc >> ~/.bashrc
+    ```
+
+2.  **Reload your shell.** You can either open a new terminal window or run `source ~/.zshrc` (or your respective shell file).
+
+3.  **Use the `vv` command.** Once set up, you can navigate to the project's root directory and use the `vv` command to toggle the environment on and off.
+
+    ```bash
+    # In the project root, this will activate the venv
+    vv
+
+    # Run it again to deactivate
+    vv
+    ```
 
 ### Running Tests
 
@@ -194,53 +186,35 @@ ai-edit/
 │   │   ├── ai_client.py    # Azure OpenAI integration
 │   │   ├── context.py      # Repository context building
 │   │   ├── file_manager.py # File operations
-│   │   └── safety.py       # Backup and safety features
 │   ├── config/
 │   │   └── manager.py      # Configuration management
+│   ├── prompts/
+│   │   └── edit_prompt.txt # Prompt templates
 │   └── utils/
 │       ├── git.py          # Git integration
 │       └── parser.py       # Response parsing
-├── tests/
-├── docs/
-└── examples/
+└── tests/
 ```
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Make your changes
-4. Add tests for new functionality
-5. Run the test suite (`pytest`)
-6. Commit your changes (`git commit -m 'Add amazing feature'`)
-7. Push to the branch (`git push origin feature/amazing-feature`)
-8. Open a Pull Request
-
-## Security
-
-- API keys are stored securely in user configuration
-- All changes are logged and can be rolled back
-- Sensitive files can be excluded via configuration
-- Dry-run mode allows safe preview of changes
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Roadmap
 
-- [ ] Support for multiple AI providers (OpenAI, Claude, etc.)
-- [ ] Web interface for visual code editing
-- [ ] Integration with popular IDEs
-- [ ] Advanced refactoring capabilities
-- [ ] Code review and suggestion features
-- [ ] Team collaboration features
+  - **Enhanced Git Workflow**:
+      - Automatically commit changes made by the AI.
+      - A `rollback` command to revert the last set of changes.
+      - A `history` command to show a log of AI-driven changes.
+  - **Advanced AI Interaction**:
+      - Support for other AI providers (OpenAI, Claude, local models).
+      - A "feedback loop" where compiler or test errors are sent back to the AI for self-correction.
+  - **Safety and Reliability**:
+      - Change logging for auditing purposes.
+  - **IDE Integration**:
+      - VS Code or JetBrains plugin for a seamless workflow.
+  - **Broader Distribution**:
+      - Publish on PyPI for easy `pip install ai-edit`.
 
 ## Support
 
-- 📝 [Documentation](https://github.com/ai-edit/ai-edit/docs)
 - 🐛 [Issue Tracker](https://github.com/ai-edit/ai-edit/issues)
-- 💬 [Discussions](https://github.com/ai-edit/ai-edit/discussions)
 
 ---
 
