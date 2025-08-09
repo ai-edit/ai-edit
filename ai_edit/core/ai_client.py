@@ -3,7 +3,7 @@
 Client for interacting with the Azure OpenAI service.
 """
 
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from openai import APIError, AzureOpenAI
 
@@ -29,24 +29,17 @@ class AIClient:
         )
         self.model = config["model"]
 
-    def get_completion(self, prompt: str) -> str:
+    def get_completion(self, messages: List[Dict[str, str]]) -> str:
         """
         Gets a completion from the Azure OpenAI model.
 
         Args:
-            prompt: The full prompt to send to the model.
-
-        Returns:
-            The content of the AI's response.
+            messages: The list of messages in the conversation history.
         """
         try:
-            # Removed temperature=0.0 and top_p=1.0 to use the service's default values
             response = self.client.chat.completions.create(
                 model=self.model,
-                messages=[
-                    {"role": "system", "content": "You are an expert AI programmer."},
-                    {"role": "user", "content": prompt},
-                ],
+                messages=messages,
             )
             if response.choices:
                 return response.choices[0].message.content or ""

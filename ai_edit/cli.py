@@ -228,8 +228,10 @@ def edit(ctx: click.Context, description: str, dry_run: bool, backup: bool, inte
         )
         sys.exit(1)
 
-    backup_dir_name = config_manager.get_config("safety.backup_dir", ".ai-edit-backups")
-    file_manager = FileManager(project_dir=current_dir, backup_dir=current_dir / backup_dir_name)
+    file_manager = FileManager(
+        project_dir=current_dir,
+        backup_dir=current_dir / config_manager.get_config("safety.backup_dir", ".ai-edit-backups"),
+    )
     context_builder = ContextBuilder(
         project_dir=current_dir,
         file_manager=file_manager,
@@ -250,77 +252,122 @@ def edit(ctx: click.Context, description: str, dry_run: bool, backup: bool, inte
     click.echo("Building context...")
     context_str = context_builder.build_context()
 
-    # --- Load prompt from template file using importlib.resources ---
     try:
-        # This is the modern, correct way to access package data files.
         prompt_template = (
             resources.files("ai_edit")
             .joinpath("prompts/edit_prompt.txt")
             .read_text(encoding="utf-8")
         )
-        prompt = prompt_template.replace("{{DESCRIPTION}}", description).replace(
+        initial_prompt = prompt_template.replace("{{DESCRIPTION}}", description).replace(
             "{{CONTEXT}}", context_str
         )
     except FileNotFoundError:
         click.echo("Error: Could not find the prompt template file.", err=True)
         sys.exit(1)
 
-    if verbose:
-        click.echo("--- Prompt ---\n" + prompt + "\n--- End Prompt ---")
+    # --- Conversation Loop ---
+    messages = [{"role": "system", "content": "You are an expert AI programmer."}]
+    messages.append({"role": "user", "content": initial_prompt})
 
-    try:
-        click.echo("🤖 Contacting AI assistant...")
-        ai_response = ai_client.get_completion(prompt)
+    max_turns = 5  # Safety brake to prevent infinite loops
+    ai_response_text = ""
 
-        click.echo("\n✅ AI Response Received.")
+    for turn in range(max_turns):
         if verbose:
-            click.echo("--------------------\n" + ai_response + "\n--------------------")
+            click.echo("\n--- Sending Request to AI ---")
+            for msg in messages:
+                click.echo(f"Role: {msg['role']}\nContent: {msg['content']}\n")
+            click.echo("--------------------------")
 
-        operations = parse_ai_response(ai_response)
+        click.echo(f"🤖 Contacting AI assistant (Turn {turn + 1}/{max_turns})...")
 
-        if not operations:
-            click.echo("\nNo file modifications were suggested by the AI.")
-            if not verbose:
-                click.echo("AI's explanation:\n" + ai_response)
+        try:
+            ai_response_text = ai_client.get_completion(messages)
+            messages.append({"role": "assistant", "content": ai_response_text})
+        except RuntimeError as e:
+            click.echo(f"\n❌ {e}", err=True)
+            sys.exit(1)
+
+        if verbose:
+            click.echo("\n✅ AI Response Received:")
+            click.echo("--------------------\n" + ai_response_text + "\n--------------------")
+
+        operations = parse_ai_response(ai_response_text)
+
+        if not operations or all(op.get("type") != "read_file" for op in operations):
+            click.echo("\nAI has provided the final modifications.")
+            break
+
+        click.echo("AI is requesting to read files...")
+        tool_outputs = []
+        for op in operations:
+            if op.get("type") == "read_file":
+                file_path = op["path"]
+                click.echo(f" - Reading file: {file_path}")
+                try:
+                    content = file_manager.get_file_contents(file_path)
+                    if not content:
+                        content = f"File '{file_path}' is empty or does not exist."
+                    tool_outputs.append(
+                        f"<tool_output><path>{file_path}</path><content>{content}</content></tool_output>"
+                    )
+                except IOError as e:
+                    tool_outputs.append(
+                        f"<tool_output><path>{file_path}</path><error>{e}</error></tool_output>"
+                    )
+
+        if tool_outputs:
+            messages.append({"role": "user", "content": "\n".join(tool_outputs)})
+
+        if turn == max_turns - 1:
+            click.echo("\n⚠️  Max conversation turns reached. Aborting.")
             return
 
-        click.echo(f"\nFound {len(operations)} potential file modification(s): ")
-        for op in operations:
-            click.echo(f" - Modify: {op['file_path']}")
+    # --- End of Conversation Loop ---
 
-        if dry_run:
-            click.echo("\n🔍 Dry-run mode. The following changes would be applied:")
-            for op in operations:
-                click.echo("\n" + "=" * 20)
-                click.echo(f"File: {op['file_path']}")
-                click.echo("=" * 20)
-                click.echo(op["content"])
-            click.echo("\nNo files were changed.")
+    final_operations = [
+        op for op in parse_ai_response(ai_response_text) if op.get("type") == "modify_file"
+    ]
+
+    if not final_operations:
+        click.echo("\nNo file modifications were suggested by the AI.")
+        if not verbose:
+            click.echo("AI's final explanation:\n" + ai_response_text)
+        return
+
+    click.echo(f"\nFound {len(final_operations)} potential file modification(s): ")
+    for op in final_operations:
+        click.echo(f" - Modify: {op['path']}")
+
+    if dry_run:
+        click.echo("\n🔍 Dry-run mode. The following changes would be applied:")
+        for op in final_operations:
+            click.echo("\n" + "=" * 20)
+            click.echo(f"File: {op['path']}")
+            click.echo("=" * 20)
+            click.echo(op["content"])
+        click.echo("\nNo files were changed.")
+        return
+
+    if interactive:
+        if not click.confirm(f"\nApply these {len(final_operations)} modification(s)?"):
+            click.echo("Changes cancelled by user.")
             return
 
-        if interactive:
-            if not click.confirm(f"\nApply these {len(operations)} modification(s)?"):
-                click.echo("Changes cancelled by user.")
-                return
+    click.echo("\nApplying changes...")
+    for op in final_operations:
+        file_path = op["path"]
+        content = op["content"]
 
-        click.echo("\nApplying changes...")
-        for op in operations:
-            file_path = op["file_path"]
-            content = op["content"]
+        if backup:
+            backup_path = file_manager.create_backup(file_path)
+            if backup_path:
+                click.echo(f" - Backed up '{file_path}'")
 
-            if backup:
-                backup_path = file_manager.create_backup(file_path)
-                if backup_path:
-                    click.echo(f" - Backed up '{file_path}'")
+        file_manager.apply_changes(file_path, content)
+        click.echo(f" - Applied changes to '{file_path}'")
 
-            file_manager.apply_changes(file_path, content)
-            click.echo(f" - Applied changes to '{file_path}'")
-
-        click.echo("\n✅ All changes applied successfully.")
-
-    except RuntimeError as e:
-        click.echo(f"\n❌ {e}", err=True)
-        sys.exit(1)
+    click.echo("\n✅ All changes applied successfully.")
 
 
 @cli.command(hidden=True, context_settings={"ignore_unknown_options": True})
