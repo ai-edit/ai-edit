@@ -6,7 +6,7 @@ Main CLI interface for ai-edit
 import sys
 from importlib import resources
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import click
 
@@ -17,6 +17,79 @@ from .core.context import ContextBuilder
 from .core.file_manager import FileManager
 from .utils.diff import apply_diff
 from .utils.parser import parse_ai_response
+
+# ---------------------------------------------------------------------------
+# Canonical few-shot examples
+#
+# The companion text file  ai_edit/prompts/few_shot_examples.txt  mirrors the
+# following list for easier reading and maintenance.  **This** in-code list is
+# the single source of truth that is fed to the LLM.
+# ---------------------------------------------------------------------------
+_FEW_SHOT_EXAMPLES: List[Dict[str, str]] = [
+    # ---------------------------------------------------------------------
+    # EXAMPLE 1 – Add a new function
+    # ---------------------------------------------------------------------
+    {
+        "role": "user",
+        "content": (
+            "Apply the following change request:\n"
+            "```request\n"
+            "Add a new function `add` to maths.py that returns the sum of two numbers.\n"
+            "```\n"
+            "Project context:\n"
+            "```file:maths.py\n"
+            "def multiply(a, b):\n"
+            "    return a * b\n"
+            "```"
+        ),
+    },
+    {
+        "role": "assistant",
+        "content": (
+            "<file_ops>\n"
+            "```modify_file maths.py\n"
+            "def multiply(a, b):\n"
+            "    return a * b\n\n"
+            "def add(a, b):\n"
+            "    return a + b\n"
+            "```\n"
+            "</file_ops>"
+        ),
+    },
+    # ---------------------------------------------------------------------
+    # EXAMPLE 2 – Bug-fix using diff
+    # ---------------------------------------------------------------------
+    {
+        "role": "user",
+        "content": (
+            "Apply the following change request:\n"
+            "```request\n"
+            "Fix off-by-one error in `index_of` inside utils/strings.py.\n"
+            "```\n"
+            "Project context:\n"
+            "```file:utils/strings.py\n"
+            "def index_of(s: str, ch: str) -> int:\n"
+            "    for i, c in enumerate(s):\n"
+            "        if c == ch:\n"
+            "            return i\n"
+            "    return -1  # BUG: should be None when not found\n"
+            "```"
+        ),
+    },
+    {
+        "role": "assistant",
+        "content": (
+            "<file_ops>\n"
+            "```modify_file --kind=diff utils/strings.py\n"
+            "@@\n"
+            "-     return -1  # BUG: should be None when not found\n"
+            "+     return None  # Fixed off-by-one comment and behaviour\n"
+            "```\n"
+            "</file_ops>"
+        ),
+    },
+]
+# ---------------------------------------------------------------------------
 
 
 class _ExitCode:
@@ -75,27 +148,35 @@ class NaturalLanguageGroup(click.Group):
 @click.version_option(version=__version__, prog_name="ai-edit")
 @click.option("--verbose", "-v", is_flag=True, help="Enable verbose output")
 @click.option("--debug", is_flag=True, help="Enable debug mode")
+@click.option(
+    "--prompt-file",
+    "prompt_file",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="Use a custom prompt file instead of built-in templates",
+)
 @click.pass_context
-def cli(ctx: click.Context, verbose: bool, debug: bool):
+def cli(ctx: click.Context, verbose: bool, debug: bool, prompt_file: Optional[Path]):
     """AI-Edit: A command-line AI code editor using Azure OpenAI"""
     ctx.ensure_object(dict)
     ctx.obj["verbose"] = verbose
     ctx.obj["debug"] = debug
+    ctx.obj["prompt_file"] = prompt_file
     ctx.obj["config_manager"] = ConfigManager()
 
     if debug:
         click.echo("Debug mode enabled")
 
     # ------------------------------------------------------------------
-    # Direct natural-language invocation (e.g. `ai-edit "Add a function"`)
+    # Direct natural-language invocation or prompt-file invocation
     # ------------------------------------------------------------------
     # When *no* sub-command has been invoked but there are remaining
-    # arguments, treat them as the description for an `edit` operation.
-    if ctx.invoked_subcommand is None and ctx.args:
-        description = " ".join(ctx.args)
+    # arguments or a prompt file has been provided, treat them as the
+    # description for an `edit` operation.
+    if ctx.invoked_subcommand is None and (ctx.args or prompt_file):
+        description = " ".join(ctx.args) if ctx.args else None
         # Clear the args so that downstream parsing does not get confused
         ctx.args = []
-        ctx.invoke(edit, description=description)  # type: ignore[arg-type]
+        ctx.invoke(edit, description=description, prompt_file=prompt_file)  # type: ignore[arg-type]
 
 
 @cli.command()
@@ -281,8 +362,27 @@ def status(ctx: click.Context):
             click.echo(f"Error analyzing repository: {e}", err=True)
 
 
+def _select_prompt_name(description: str) -> str:
+    """
+    Select an appropriate prompt template based on the *first* word
+    of the user's natural-language description.  The mapping is very
+    lightweight for now but can easily be expanded or replaced with a
+    more sophisticated NLP classifier in the future.
+    """
+    first_word = description.strip().split(maxsplit=1)[0].lower() if description else ""
+    if first_word in {"add", "create", "implement"}:
+        return "add_prompt.txt"
+    if first_word in {"modify", "change", "update"}:
+        return "modify_prompt.txt"
+    if first_word in {"refactor"}:
+        return "refactor_prompt.txt"
+    if first_word in {"fix", "bugfix", "correct"}:
+        return "fix_prompt.txt"
+    return "edit_prompt.txt"
+
+
 @cli.command()
-@click.argument("description")
+@click.argument("description", required=False)
 @click.option("--dry-run", is_flag=True, help="Preview changes without applying them")
 @click.option("--backup", is_flag=True, help="Create backup before changes")
 @click.option(
@@ -291,15 +391,36 @@ def status(ctx: click.Context):
     is_flag=True,
     help="Interactive mode with confirmations",
 )
+@click.option(
+    "--prompt-file",
+    "prompt_file",
+    type=click.Path(exists=True, dir_okay=False, path_type=Path),
+    help="Use a custom prompt file instead of built-in templates",
+)
 @click.pass_context
 def edit(
     ctx: click.Context,
-    description: str,
+    description: Optional[str],
     dry_run: bool,
     backup: bool,
     interactive: bool,
+    prompt_file: Optional[Path],
 ):
-    """Apply changes based on natural language description"""
+    """
+    Apply changes to your codebase using natural language or a custom prompt.
+
+    Examples
+    --------
+    • Use natural-language description:
+        ai-edit edit "Add logging to utils.py"
+
+    • Use a custom prompt file:
+        ai-edit edit --prompt-file my_change_request.txt
+    """
+    # If the root command captured --prompt-file it overrides / complements here.
+    if not prompt_file:
+        prompt_file = ctx.obj.get("prompt_file")
+
     config_manager: ConfigManager = ctx.obj["config_manager"]
     current_dir = Path.cwd()
 
@@ -309,6 +430,13 @@ def edit(
     if not (current_dir / ".ai-edit.yaml").exists():
         click.echo("not initialized", err=True)
         sys.exit(_ExitCode.NOT_INITIALIZED)
+
+    # ---------------------------------------------------------------------
+    # Validate required inputs
+    # ---------------------------------------------------------------------
+    if not description and not prompt_file:
+        click.echo("Error: Either a DESCRIPTION or --prompt-file must be provided.", err=True)
+        sys.exit(1)
 
     # ---------------------------------------------------------------------
     # NOTE: The AI-driven edit pipeline is still under active development.
@@ -351,8 +479,11 @@ def edit(
         click.echo(f"Error initializing AI client: {e}", err=True)
         sys.exit(1)
 
-    # Always show the user's description (requirement)
-    click.echo(f"Description: {description}")
+    # Always show what the user provided
+    if description:
+        click.echo(f"Description: {description}")
+    if prompt_file:
+        click.echo(f"Using custom prompt file: {prompt_file}")
     if verbose:
         click.echo(
             f"Options: dry-run={dry_run}, backup={backup}, interactive={interactive}, diff-enabled={diff_enabled}"
@@ -361,27 +492,50 @@ def edit(
     click.echo("Building context...")
     context_str = context_builder.build_context()
 
-    try:
-        prompt_template = (
-            resources.files("ai_edit")
-            .joinpath("prompts/edit_prompt.txt")
-            .read_text(encoding="utf-8")
-        )
-        initial_prompt = prompt_template.replace("{{DESCRIPTION}}", description).replace(
-            "{{CONTEXT}}", context_str
-        )
-    except FileNotFoundError:
-        click.echo("Error: Could not find the prompt template file.", err=True)
-        sys.exit(1)
+    # ---------------------------------------------------------------------
+    # Load prompt template
+    # ---------------------------------------------------------------------
+    if prompt_file:
+        try:
+            prompt_template = Path(prompt_file).read_text(encoding="utf-8")
+        except Exception as e:
+            click.echo(f"Error reading prompt file '{prompt_file}': {e}", err=True)
+            sys.exit(1)
+    else:
+        prompt_filename = _select_prompt_name(description or "")
+        try:
+            prompt_template = (
+                resources.files("ai_edit")
+                .joinpath(f"prompts/{prompt_filename}")
+                .read_text(encoding="utf-8")
+            )
+        except FileNotFoundError:
+            # Fallback to generic prompt if specialised one is missing
+            prompt_template = (
+                resources.files("ai_edit")
+                .joinpath("prompts/edit_prompt.txt")
+                .read_text(encoding="utf-8")
+            )
+
+    # ---------------------------------------------------------------------
+    # Prepare initial prompt
+    # ---------------------------------------------------------------------
+    initial_prompt = prompt_template.replace("{{CONTEXT}}", context_str)
+    if description:
+        initial_prompt = initial_prompt.replace("{{DESCRIPTION}}", description)
 
     system_prompt = (
         "You are an expert AI programmer. Your task is to modify a codebase "
         "based on a user's request."
     )
-    messages = [
-        {"role": "system", "content": system_prompt},
-        {"role": "user", "content": initial_prompt},
-    ]
+
+    # -----------------------------------------------------------
+    # Build messages with few-shot examples
+    # -----------------------------------------------------------
+    messages: List[Dict[str, str]] = [{"role": "system", "content": system_prompt}]
+    messages.extend(_FEW_SHOT_EXAMPLES)
+    messages.append({"role": "user", "content": initial_prompt})
+
     max_turns = config_manager.get_config("agent.max_turns", 15)
     ai_response_text = ""
 
@@ -548,7 +702,11 @@ def default_edit(ctx: click.Context, args):
 
     if tokens:
         description = " ".join(tokens)
-        ctx.invoke(edit, description=description)
+        ctx.invoke(
+            edit,
+            description=description,
+            prompt_file=ctx.obj.get("prompt_file"),
+        )
     else:
         # Fallback – should never be reached by normal user input.
         click.echo(ctx.get_help())

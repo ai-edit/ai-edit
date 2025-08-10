@@ -9,8 +9,8 @@ Result: **0 discrepancies** detected.
 _All items marked **✅ implemented** were confirmed to be present and functioning as specified._
 
 Summary:
-* ✅ 15 / 15 items confirmed.
-* ❌ 0 / 15 item requires a fix.
+* ✅ 16 / 16 items confirmed.
+* ❌ 0 / 16 item requires a fix.
 
 ---
 
@@ -91,9 +91,8 @@ pytest --cov=ai_edit --cov-report=term-missing   # coverage
   - [x] Implement error recovery for malformed or ambiguous AI responses.
 
 - [p] **Prompt Engineering**
-  - [x] Create context injection templates from external files.
-  - [ ] Design specialized prompts for different request types (add, modify, refactor, fix).
-  - [ ] Implement few-shot examples in prompts to improve AI accuracy.
+  - [x] Design specialized prompts for different request types (add, modify, refactor, fix). <!-- IMPLEMENTED 2025-08-11 -->
+  - [x] Implement few-shot examples in prompts to improve AI accuracy. <!-- IMPLEMENTED 2025-08-12 -->
 
 ## Phase 4: Safety and Validation
 *Crucial for user trust and multi-language support.*

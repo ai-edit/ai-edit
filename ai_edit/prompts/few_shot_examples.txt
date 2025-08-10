@@ -1,0 +1,60 @@
+# Few-shot examples for ai-edit
+#
+# -----------------------------------------------------------------
+# Source of truth
+# -----------------------------------------------------------------
+# The canonical list of few-shot examples lives inside
+#    ai_edit/cli.py  (variable: _FEW_SHOT_EXAMPLES)
+#
+# This companion file merely mirrors those examples for easier
+# reading and future editing without having to poke through code.
+# -----------------------------------------------------------------
+#
+# EXAMPLE 1 – Add a new function
+#
+# <user>
+# Apply the following change request:
+# ```request
+# Add a new function `add` to maths.py that returns the sum of two numbers.
+# ```
+# Project context:
+# ```file:maths.py
+# def multiply(a, b):
+#     return a * b
+# ```
+#
+# <assistant>
+# <file_ops>
+# ```modify_file maths.py
+# def multiply(a, b):
+#     return a * b
+#
+# def add(a, b):
+#     return a + b
+# ```
+# </file_ops>
+#
+# EXAMPLE 2 – Bug-fix using diff
+#
+# <user>
+# Apply the following change request:
+# ```request
+# Fix off-by-one error in `index_of` inside utils/strings.py.
+# ```
+# Project context:
+# ```file:utils/strings.py
+# def index_of(s: str, ch: str) -> int:
+#     for i, c in enumerate(s):
+#         if c == ch:
+#             return i
+#     return -1  # BUG: should be None when not found
+# ```
+#
+# <assistant>
+# <file_ops>
+# ```modify_file --kind=diff utils/strings.py
+# @@
+# -     return -1  # BUG: should be None when not found
+# +     return None  # Fixed off-by-one comment and behaviour
+# ```
+# </file_ops>

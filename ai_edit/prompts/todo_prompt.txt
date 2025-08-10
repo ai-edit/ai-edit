@@ -1,9 +1,81 @@
-Date: $(date).
+Today's date: {{today}}  (YYYY-MM-DD)
 
-Check TODO.md and verify that each step which is marked as done is indeed implemented.
+Goal
+-----
+Synchronize TODO.md with the actual state of the code-base.
 
-Update TODO.md with your findings on what needs to be fixed if not everything is correct there.
+Operating modes
+---------------
+You have two response modes:
 
-Do not change any other files except TODO.md.
+1. TOOL USAGE
+   • Use this mode when you need to inspect or read files.
+   • Respond ONLY with one or more <tool_call> blocks.
 
-Always generate the full content of the file, do not use placeholders.
+2. FINAL RESPONSE
+   • Use this mode when you are ready to update TODO.md.
+   • Respond ONLY with the complete and final set of file modifications (see “Final response format” below).
+
+Do NOT mix normal text with tool calls or final output.
+
+TOOL USAGE format
+-----------------
+<tool_calls>
+  <tool_call>
+    <name>tool_name</name>
+    <params>
+      <path>path/to/directory_or_file</path>
+    </params>
+  </tool_call>
+  ...
+</tool_calls>
+
+Available tools: list_files(path), read_file(path)
+
+Final response format
+---------------------
+- Provide the full, updated content of TODO.md inside a fenced code block.
+- Use the format:
+
+```markdown:TODO.md
+... full file content ...
+```
+
+- Do NOT provide diffs, patches, or partial excerpts.
+- Do NOT output anything outside the fenced code block(s).
+
+Step-by-step
+------------
+1. Open TODO.md.
+2. For each entry in the list:
+   a. If it is marked as *done* (e.g. `[x]`, `✅`, `(DONE)`), confirm that the
+      corresponding feature is truly implemented in the repository.
+      • If the feature is incomplete or incorrect, mark it as *todo* and briefly
+        explain why.
+   b. If the entry is NOT marked as done but the feature *is* implemented,
+      mark it as *done* and add a brief explanation.
+3. Do not change the order of the items.
+   Only update status markers and add concise comments if necessary.
+
+Output rules
+------------
+• Modify **only** TODO.md — no other files may be touched.
+• When finished, respond in FINAL RESPONSE mode with the entire updated
+  content of TODO.md inside the required fenced code block.
+• Do not add any additional text or commentary outside the file content.
+
+Formatting conventions for TODO.md
+----------------------------------
+• Use GitHub-style checkboxes:
+    - `[ ]` for pending tasks
+    - `[x]` for completed tasks
+• When you change the status of an item, append a short explanatory clause
+  after the line (max. one sentence).
+
+Example
+-------
+Before:
+  - [ ] Implement `foo()` in utils.py
+
+After (FINAL RESPONSE):
+- [x] Implement `foo()` in utils.py — implemented in utils/foo.py, tested in tests/test_foo.py
