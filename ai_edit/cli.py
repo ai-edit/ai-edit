@@ -262,7 +262,12 @@ def status(ctx: click.Context):
             for file in all_files:
                 if file.is_file():
                     ext = file.suffix.lower() or "(no extension)"
-                    extensions[ext] = extensions.get(ext, 0) + 1
+                    extensions[ext] = (
+                        extensions.get(
+                            ext,
+                        )
+                        + 1
+                    )
             click.echo()
             click.echo("File types:")
             for ext, count in sorted(extensions.items(), key=lambda item: item[1], reverse=True)[
@@ -314,6 +319,11 @@ def edit(
         return  # graceful success (exit-code 0)
 
     # ---------------------------------------------------------------------
+    # Retrieve feature flags / config values
+    # ---------------------------------------------------------------------
+    diff_enabled: bool = config_manager.get_config("change_engine.diff_enabled", True)
+
+    # ---------------------------------------------------------------------
     # The fully-featured implementation will be executed once the user
     # provides the necessary configuration.
     # ---------------------------------------------------------------------
@@ -340,9 +350,12 @@ def edit(
         click.echo(f"Error initializing AI client: {e}", err=True)
         sys.exit(1)
 
+    # Always show the user's description (requirement)
+    click.echo(f"Description: {description}")
     if verbose:
-        click.echo(f"Description: {description}")
-        click.echo(f"Options: dry-run={dry_run}, backup={backup}, interactive={interactive}")
+        click.echo(
+            f"Options: dry-run={dry_run}, backup={backup}, interactive={interactive}, diff-enabled={diff_enabled}"
+        )
 
     click.echo("Building context...")
     context_str = context_builder.build_context()
@@ -450,16 +463,17 @@ def edit(
 
     click.echo(f"\nFound {len(final_operations)} potential file modification(s): ")
     for op in final_operations:
-        suffix = " (diff)" if op.get("kind") == "diff" else ""
+        suffix = ""
+        if op.get("kind") == "diff":
+            suffix = " (diff)" if diff_enabled else " (diff → full)"
         click.echo(f" - Modify: {op['path']}{suffix}")
 
     if dry_run:
         click.echo("\nDry-run mode. The following changes would be applied:")
         for op in final_operations:
+            effective_kind = "patch" if op.get("kind") == "diff" and diff_enabled else "full"
             click.echo("\n" + "=" * 20)
-            click.echo(
-                f"File: {op['path']}   " f"Kind: {'patch' if op.get('kind') == 'diff' else 'full'}"
-            )
+            click.echo(f"File: {op['path']}   Kind: {effective_kind}")
             click.echo("=" * 20)
             click.echo(op["content"])
         click.echo("\nNo files were changed.")
@@ -482,14 +496,14 @@ def edit(
                     click.echo(f" - Backed up '{file_path}'")
 
             # ------------------------------------------------------------
-            # Route based on *kind*
+            # Route based on *kind* and *diff_enabled* flag
             # ------------------------------------------------------------
-            if kind == "diff":
+            if kind == "diff" and diff_enabled:
                 file_manager.apply_patch(file_path, content)
+                click.echo(f" - Applied patch to '{file_path}'")
             else:
                 file_manager.apply_changes(file_path, content)
-
-            click.echo(f" - Applied {'patch' if kind == 'diff' else 'changes'} to '{file_path}'")
+                click.echo(f" - Applied changes to '{file_path}'")
 
         click.echo("\nAll changes applied successfully.")
     except Exception as e:

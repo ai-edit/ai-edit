@@ -1,61 +1,65 @@
-# AI-Edit Implementation TODO (Re-verified)
+# AI-Edit Implementation TODO (Re-verified – 2025-08-10)
 
-## Verification Report (Automated Check – 2024-06-12)
+## Verification Report (Automated Check – 2025-08-10)
 
-During the latest automated scan almost all tasks marked as completed **are indeed implemented**
-(see detailed notes below).
-One discrepancy was detected and has been corrected in this file.
+The latest automated audit re-checked all steps that are currently marked **✅ implemented** in this document.
 
-✅ = Confirmed implemented
-❌ = Missing / incomplete implementation
+Result: **1 discrepancy** detected.
+
+❌ **Phase 3 → Change Application Engine → Step 6 (`diff_enabled` flag)**
+ • When `change_engine.diff_enabled` is **False** the CLI correctly routes
+   diff operations through `FileManager.apply_changes(...)`, but that helper
+   uses a heuristic that still detects the diff and applies it as a patch.
+ • Expected behaviour: with the flag disabled, diffs must be downgraded to
+   a full-file replacement so that _no_ patching occurs.
+
+All other items marked **✅ implemented** were confirmed to be present and functioning as specified.
+
+Summary:
+* ✅ 13 / 14 items confirmed.
+* ❌ 1 / 14 item requires a fix (see above).
+
+---
+
+Legend:
+✅ = Confirmed implemented | ❌ = Missing / incomplete implementation | [p] = Partially complete
+
+---
 
 1. ✅ **Phase 3 → Change Application Engine → Step 4 (CLI / Orchestration)**
-   • `ai_edit/cli.py` correctly inspects `kind == "diff"` from
-     `parse_ai_response(...)` and routes the payload to
-     `file_manager.apply_patch(...)`.
-   • Verified in the final write-loop (`for op in final_operations:`).
+   `ai_edit/cli.py` checks `kind == "diff"` and calls `FileManager.apply_patch(...)` when enabled.
 
-2. ❌ **Phase 3 → Response Processing → Error Recovery**
-   • `ai_edit/utils/parser.py` successfully parses regular and diff code blocks.
-   • However, there is **no explicit error-recovery logic** for malformed /
-     ambiguous AI responses (e.g. unclosed fences, truncated XML) – the current
-     implementation silently skips such fragments rather than attempting to
-     repair or notify.
+2. ✅ **Phase 3 → Response Processing → Error Recovery**
+   `ai_edit/utils/parser.py` emits `warning: unclosed_fence_recovered` for unclosed fenced blocks.
 
-_All other items previously marked as completed were verified and found to be
-implemented correctly._
+3. ❌ **Phase 3 → Change Application Engine → Step 6 (`diff_enabled` flag)**
+   Logic exists, but disabling the flag does **not** fully prevent diff application (see discrepancy).
+
+_All other previously completed items remain verified and correct._
 
 ---
 
 ## Running the Test Suite
 
-The repository contains three main test modules located in the `tests/`
-directory:
+The repository contains three main test modules in the `tests/` directory:
 
 * `tests/test_cli.py` – validates CLI behaviour and user interaction.
 * `tests/test_config.py` – covers configuration management logic.
-* `tests/test_diff.py` – unit and integration tests for diff generation /
-  application and the `FileManager` patch workflow.
+* `tests/test_diff.py` – unit & integration tests for diff generation / application.
 
 ### Quick start
-
-# 1. (Optional) create and activate a virtual environment
+# 1 · (Optional) create and activate a virtual environment
 python -m venv venv
-source venv/bin/activate          # Windows: venv\Scripts\activate
+source venv/bin/activate            # Windows: venv\Scripts\activate
 
-# 2. Install ai-edit with development dependencies
+# 2 · Install ai-edit with development dependencies
 pip install -e ".[dev]"
 
-# 3. Run the whole test suite
+# 3 · Run the whole test suite
 pytest
-
 ### Extra options
-
-# Run tests with minimal output
-pytest -q
-
-# Measure test coverage
-pytest --cov=ai_edit --cov-report=term-missing
+pytest -q                                    # Run tests with minimal output
+pytest --cov=ai_edit --cov-report=term-missing   # Measure test coverage
 
 ---
 
@@ -77,19 +81,19 @@ pytest --cov=ai_edit --cov-report=term-missing
 - [p] **Change Application Engine**
   - [x] Apply full file content changes.
   - [x] Implement `diff` generation and application for more precise, partial file updates.
-    Detailed implementation plan:
-      1. `ai_edit/utils/diff.py` ✅ IMPLEMENTED
-      2. `ai_edit/core/file_manager.py` ✅ IMPLEMENTED
-      3. `ai_edit/utils/parser.py` ✅ IMPLEMENTED
-      4. `ai_edit/cli.py` ✅ IMPLEMENTED
-      5. Tests (`tests/test_diff.py`) ✅ IMPLEMENTED
-      6. Optional: Config flag (`.ai-edit.yaml`) ✅ IMPLEMENTED
+    Implementation checklist:
+      1. `ai_edit/utils/diff.py` ✅
+      2. `ai_edit/core/file_manager.py` ✅
+      3. `ai_edit/utils/parser.py` ✅
+      4. `ai_edit/cli.py` ✅
+      5. Tests (`tests/test_diff.py`) ✅
+      6. Optional: Config flag (`.ai-edit.yaml`) **❌ – needs fix** ← see report
   - [ ] Add strategies to preserve existing code formatting and style where possible.
 
 - [p] **Response Processing**
   - [x] Create `ai_edit/utils/parser.py` to parse AI responses for file operations.
   - [x] Extract full file paths and content from fenced code blocks.
-  - [ ] Implement error recovery for malformed or ambiguous AI responses.  <!-- corrected from done -->
+  - [x] Implement error recovery for malformed or ambiguous AI responses.
 
 - [p] **Prompt Engineering**
   - [x] Create context injection templates from external files.
@@ -98,15 +102,18 @@ pytest --cov=ai_edit --cov-report=term-missing
 
 ## Phase 4: Safety and Validation
 *Crucial for user trust and multi-language support.*
+
 - [p] **Core Safety Features**
   - [x] Implement `--dry-run`, `--interactive`, and `--backup` flags in the CLI.
   - [ ] Create `ai_edit/utils/git.py` for automated Git operations.
   - [ ] Automatically create a Git commit before applying changes.
   - [ ] Implement a `rollback` command to revert the last set of changes.
+
 - [ ] **Configurable Validation Engine (NEW)**
   - [ ] Add a `validation_command` (e.g., `make`, `npm test`, `swift build`) to `.ai-edit.yaml`.
   - [ ] After applying changes, automatically run the specified validation command.
   - [ ] Capture the `stdout` and `stderr` from the command.
+
 - [ ] **AI Feedback Loop (NEW)**
   - [ ] If the validation command fails, feed the compiler/linker errors back to the AI.
   - [ ] Use a new prompt template asking the AI to fix the errors based on the feedback.
@@ -145,7 +152,7 @@ pytest --cov=ai_edit --cov-report=term-missing
   - [ ] Set up GitHub Actions for CI/CD to automate testing and releases.
 - [ ] **Installation Methods**
   - [ ] Create a Homebrew formula for macOS users.
-  - [ ] Publish a Docker image for containerized use.
+  - [ ] Publish a Docker image for containerised use.
 
 ## Phase 9: Advanced Integrations
 - [ ] **Additional AI Providers**

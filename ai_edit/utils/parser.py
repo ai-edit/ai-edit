@@ -1,6 +1,6 @@
 """
 Enhanced AI response parser that supports both full-file content updates
-and unified diffs / patches.
+and unified diffs / patches, **with basic error-recovery**.
 
 Key Features Added
 ------------------
@@ -8,6 +8,10 @@ Key Features Added
 2. Returns a ``kind`` field in each operation dictionary with values
    ``"full"`` or ``"diff"``.
 3. Maintains backward-compatibility with the original public interface.
+4. Attempts to **recover from malformed AI responses** where the closing
+   code-fence is missing (unclosed block).  The parser will emit an
+   operation using the remaining content instead of silently discarding
+   it.
 """
 
 from __future__ import annotations
@@ -59,6 +63,15 @@ def _parse_code_blocks(response: str) -> List[Dict[str, Any]]:
 
     Supports nested fences and differentiates between full-file and
     diff/patch payloads.
+
+    Error-recovery strategy
+    -----------------------
+    The most common malformed pattern in LLM outputs is an *unclosed*
+    fence.  If we reach the end of the message while still *inside* a
+    primary fence we will now emit an operation with the collected
+    content instead of discarding it.  This allows the rest of the
+    pipeline to proceed (potentially prompting the user for manual
+    confirmation), rather than failing silently.
     """
     operations: List[Dict[str, Any]] = []
 
@@ -112,6 +125,21 @@ def _parse_code_blocks(response: str) -> List[Dict[str, Any]]:
 
         # Regular content line
         content_lines.append(line)
+
+    # -------------------------------------------------------------------- #
+    # Error-recovery: unclosed primary fence
+    # -------------------------------------------------------------------- #
+    if in_block:
+        kind = "diff" if language.lower() in _DIFF_LIKE_LANGUAGES else "full"
+        operations.append(
+            {
+                "type": "modify_file",
+                "path": file_path,
+                "kind": kind,
+                "content": "\n".join(content_lines).strip("\n"),
+                "warning": "unclosed_fence_recovered",
+            }
+        )
 
     return operations
 
