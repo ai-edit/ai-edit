@@ -47,6 +47,13 @@ class ConfigManager:
             "dry_run_default": False,
             "backup_dir": ".ai-edit-backups",
         },
+        # Change-application engine settings
+        # ``diff_enabled`` toggles whether ai-edit should *apply* incoming
+        # unified-diff patches.  When set to ``false`` the engine will fall
+        # back to full-file replacements.
+        "change_engine": {
+            "diff_enabled": True,
+        },
         # General settings
         "general": {"verbose": False, "editor": None},  # Will use $EDITOR or default
     }
@@ -162,6 +169,7 @@ class ConfigManager:
             "safety.create_backups",
             "safety.dry_run_default",
             "general.verbose",
+            "change_engine.diff_enabled",
         ]:
             value = str(value).lower() in ("true", "1", "yes", "on")
 

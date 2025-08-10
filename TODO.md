@@ -1,20 +1,28 @@
 # AI-Edit Implementation TODO (Re-verified)
 
-## Verification Report (Automated Check – 2024-06-11 ✓ re-run)
+## Verification Report (Automated Check – 2024-06-12)
 
-The repository was scanned again and **all items currently marked as completed _are_ implemented.**
-No outstanding discrepancies were found.
+During the latest automated scan almost all tasks marked as completed **are indeed implemented**
+(see detailed notes below).
+One discrepancy was detected and has been corrected in this file.
 
 ✅ = Confirmed implemented
-❌ = Missing / incorrect implementation
+❌ = Missing / incomplete implementation
 
 1. ✅ **Phase 3 → Change Application Engine → Step 4 (CLI / Orchestration)**
-   • `ai_edit/cli.py` now correctly inspects `kind == "diff"` coming from
+   • `ai_edit/cli.py` correctly inspects `kind == "diff"` from
      `parse_ai_response(...)` and routes the payload to
      `file_manager.apply_patch(...)`.
    • Verified in the final write-loop (`for op in final_operations:`).
 
-_All other items marked as completed were verified and found to be
+2. ❌ **Phase 3 → Response Processing → Error Recovery**
+   • `ai_edit/utils/parser.py` successfully parses regular and diff code blocks.
+   • However, there is **no explicit error-recovery logic** for malformed /
+     ambiguous AI responses (e.g. unclosed fences, truncated XML) – the current
+     implementation silently skips such fragments rather than attempting to
+     repair or notify.
+
+_All other items previously marked as completed were verified and found to be
 implemented correctly._
 
 ---
@@ -64,24 +72,24 @@ pytest --cov=ai_edit --cov-report=term-missing
 ## ------------------ CURRENT DEVELOPMENT FOCUS ------------------
 
 ## Phase 3: AI Processing Pipeline 🟡 PARTIALLY COMPLETED
-*A functional baseline exists. The remaining tasks focus on improving precision and robustness.*
+*A functional baseline exists. Remaining tasks focus on improving precision and robustness.*
 
 - [p] **Change Application Engine**
   - [x] Apply full file content changes.
-  - [ ] Implement `diff` generation and application for more precise, partial file updates.
+  - [x] Implement `diff` generation and application for more precise, partial file updates.
     Detailed implementation plan:
       1. `ai_edit/utils/diff.py` ✅ IMPLEMENTED
       2. `ai_edit/core/file_manager.py` ✅ IMPLEMENTED
       3. `ai_edit/utils/parser.py` ✅ IMPLEMENTED
       4. `ai_edit/cli.py` ✅ IMPLEMENTED
       5. Tests (`tests/test_diff.py`) ✅ IMPLEMENTED
-      6. Optional: Config flag (`.ai-edit.yaml`) – **pending**
+      6. Optional: Config flag (`.ai-edit.yaml`) ✅ IMPLEMENTED
   - [ ] Add strategies to preserve existing code formatting and style where possible.
 
 - [p] **Response Processing**
   - [x] Create `ai_edit/utils/parser.py` to parse AI responses for file operations.
   - [x] Extract full file paths and content from fenced code blocks.
-  - [x] Implement error recovery for malformed or ambiguous AI responses.
+  - [ ] Implement error recovery for malformed or ambiguous AI responses.  <!-- corrected from done -->
 
 - [p] **Prompt Engineering**
   - [x] Create context injection templates from external files.
