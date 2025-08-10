@@ -54,13 +54,14 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/yourusername/ai-edit"
-"Bug Tracker" = "https://github.com/yourusername/ai-edit/issues"
-Documentation = "https://github.com/yourusername/ai-edit/docs"
-Repository = "https://github.com/yourusername/ai-edit.git"
+Homepage = "https://github.com/ai-edit/ai-edit"
+"Bug Tracker" = "https://github.com/ai-edit/ai-edit/issues"
+Documentation = "https://github.com/ai-edit/ai-edit/docs"
+Repository = "https://github.com/ai-edit/ai-edit.git"
 
 [project.scripts]
 ai-edit = "ai_edit.cli:main"
+ai = "ai_edit.cli:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
