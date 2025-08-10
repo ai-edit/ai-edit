@@ -1,0 +1,1 @@
+Read README.md and TODO.md first to understand the project. The latest commits are: $(git log --oneline). Now please suggest a one line commit message for new changes: $(git diff --staged)

@@ -1,0 +1,1 @@
+Check TODO.md and verify that each step which is marked as done is indeed implemented, update TODO.md with your findings on what needs to be fixed if not everything is correct there

@@ -5,19 +5,20 @@ Client for interacting with the Azure OpenAI service.
 
 from typing import Any, Dict, List
 
+import click  # Import click for colored output
 from openai import APIError, AzureOpenAI
 
 
 class AIClient:
     """Handles communication with the Azure OpenAI API."""
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: Dict[str, Any], debug: bool = False):
         """
         Initializes the AI client with Azure credentials.
 
         Args:
-            config: A dictionary containing Azure configuration,
-                    including 'endpoint', 'api_key', 'api_version', and 'model'.
+            config: A dictionary containing Azure configuration.
+            debug: Whether to print debug messages.
         """
         if not all(k in config for k in ["endpoint", "api_key", "api_version", "model"]):
             raise ValueError("Azure configuration is missing required keys.")
@@ -28,6 +29,8 @@ class AIClient:
             api_version=config["api_version"],
         )
         self.model = config["model"]
+        self.config = config
+        self.debug = debug
 
     def get_completion(self, messages: List[Dict[str, str]]) -> str:
         """
@@ -36,6 +39,14 @@ class AIClient:
         Args:
             messages: The list of messages in the conversation history.
         """
+        if self.debug:
+            # Construct and print the full URL for debugging purposes
+            endpoint = self.config["endpoint"].strip("/")
+            deployment = self.model
+            api_version = self.config["api_version"]
+            full_url = f"{endpoint}/openai/deployments/{deployment}/chat/completions?api-version={api_version}"
+            click.echo(f"DEBUG: Requesting URL: {full_url}", err=True)
+
         try:
             response = self.client.chat.completions.create(
                 model=self.model,

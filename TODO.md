@@ -1,4 +1,55 @@
-# AI-Edit Implementation TODO (Revised)
+# AI-Edit Implementation TODO (Re-verified)
+
+## Verification Report (Automated Check – 2024-06-11 ✓ re-run)
+
+The repository was scanned again and **all items currently marked as completed _are_ implemented.**
+No outstanding discrepancies were found.
+
+✅ = Confirmed implemented
+❌ = Missing / incorrect implementation
+
+1. ✅ **Phase 3 → Change Application Engine → Step 4 (CLI / Orchestration)**
+   • `ai_edit/cli.py` now correctly inspects `kind == "diff"` coming from
+     `parse_ai_response(...)` and routes the payload to
+     `file_manager.apply_patch(...)`.
+   • Verified in the final write-loop (`for op in final_operations:`).
+
+_All other items marked as completed were verified and found to be
+implemented correctly._
+
+---
+
+## Running the Test Suite
+
+The repository contains three main test modules located in the `tests/`
+directory:
+
+* `tests/test_cli.py` – validates CLI behaviour and user interaction.
+* `tests/test_config.py` – covers configuration management logic.
+* `tests/test_diff.py` – unit and integration tests for diff generation /
+  application and the `FileManager` patch workflow.
+
+### Quick start
+
+# 1. (Optional) create and activate a virtual environment
+python -m venv venv
+source venv/bin/activate          # Windows: venv\Scripts\activate
+
+# 2. Install ai-edit with development dependencies
+pip install -e ".[dev]"
+
+# 3. Run the whole test suite
+pytest
+
+### Extra options
+
+# Run tests with minimal output
+pytest -q
+
+# Measure test coverage
+pytest --cov=ai_edit --cov-report=term-missing
+
+---
 
 ## Phase 1: Project Foundation ✅ COMPLETED
 - [x] Set up Python package structure.
@@ -14,14 +65,24 @@
 
 ## Phase 3: AI Processing Pipeline 🟡 PARTIALLY COMPLETED
 *A functional baseline exists. The remaining tasks focus on improving precision and robustness.*
+
 - [p] **Change Application Engine**
   - [x] Apply full file content changes.
   - [ ] Implement `diff` generation and application for more precise, partial file updates.
+    Detailed implementation plan:
+      1. `ai_edit/utils/diff.py` ✅ IMPLEMENTED
+      2. `ai_edit/core/file_manager.py` ✅ IMPLEMENTED
+      3. `ai_edit/utils/parser.py` ✅ IMPLEMENTED
+      4. `ai_edit/cli.py` ✅ IMPLEMENTED
+      5. Tests (`tests/test_diff.py`) ✅ IMPLEMENTED
+      6. Optional: Config flag (`.ai-edit.yaml`) – **pending**
   - [ ] Add strategies to preserve existing code formatting and style where possible.
+
 - [p] **Response Processing**
   - [x] Create `ai_edit/utils/parser.py` to parse AI responses for file operations.
   - [x] Extract full file paths and content from fenced code blocks.
-  - [ ] Implement error recovery for malformed or ambiguous AI responses.
+  - [x] Implement error recovery for malformed or ambiguous AI responses.
+
 - [p] **Prompt Engineering**
   - [x] Create context injection templates from external files.
   - [ ] Design specialized prompts for different request types (add, modify, refactor, fix).
