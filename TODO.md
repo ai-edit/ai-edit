@@ -9,8 +9,8 @@ Result: **0 discrepancies** detected.
 _All items marked **✅ implemented** were confirmed to be present and functioning as specified._
 
 Summary:
-* ✅ 14 / 14 items confirmed.
-* ❌ 0 / 14 item requires a fix.
+* ✅ 15 / 15 items confirmed.
+* ❌ 0 / 15 item requires a fix.
 
 ---
 
@@ -26,7 +26,7 @@ Legend:
    `ai_edit/utils/parser.py` emits `warning: unclosed_fence_recovered` for unclosed fenced blocks.
 
 3. ✅ **Phase 3 → Change Application Engine → Step 6 (`diff_enabled` flag)**
-   When `change_engine.diff_enabled` is set to **False**, the CLI now downgrades any unified diff
+   When `change_engine.diff_enabled` is set to **False**, the CLI downgrades any unified diff
    to a _full-file replacement_. Internally the diff is transformed into the updated content
    using `ai_edit.utils.diff.apply_diff` and then written out with `FileManager.apply_changes(...)`.
 
@@ -52,7 +52,7 @@ pip install -e ".[dev]"
 
 # 3 · Run the whole test suite
 pytest
-Extra options:
+# Extra options:
 pytest -q                                    # minimal output
 pytest --cov=ai_edit --cov-report=term-missing   # coverage
 
@@ -83,7 +83,7 @@ pytest --cov=ai_edit --cov-report=term-missing   # coverage
       4. `ai_edit/cli.py` ✅
       5. Tests (`tests/test_diff.py`) ✅
       6. Optional: Config flag (`.ai-edit.yaml`) ✅
-  - [ ] Add strategies to preserve existing code formatting and style where possible.
+  - [x] Add strategies to preserve existing code formatting and style where possible. <!-- IMPLEMENTED 2025-08-10 -->
 
 - [p] **Response Processing**
   - [x] Create `ai_edit/utils/parser.py` to parse AI responses for file operations.

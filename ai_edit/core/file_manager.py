@@ -1,6 +1,16 @@
 # ai_edit/core/file_manager.py
 """
 Handles safe file operations for ai-edit
+
+NEW IN 2025-08-10
+-----------------
+Adds basic formatting-preservation strategies:
+
+* Retains the original line-ending style (LF vs. CRLF).
+* Preserves whether the original file ended with a trailing newline.
+
+These heuristics keep diffs minimal and honour project-specific
+formatting conventions without adding heavy external dependencies.
 """
 from __future__ import annotations
 
@@ -93,6 +103,9 @@ class FileManager:
         except Exception as exc:  # pragma: no cover
             raise IOError(f"Failed to apply diff to {file_path}: {exc}") from exc
 
+        # Preserve basic formatting choices from the original file
+        patched = self._preserve_formatting(original, patched)
+
         self._write_file(file_path, patched)
 
     # ---------------------------------------------------------------------#
@@ -118,6 +131,8 @@ class FileManager:
         else:
             if self.debug:
                 click.echo(f"DEBUG: Overwriting file '{file_path}' directly.")
+            original = self.get_file_contents(file_path)
+            new_content = self._preserve_formatting(original, new_content)
             self._write_file(file_path, new_content)
 
     # ---------------------------------------------------------------------#
@@ -134,3 +149,47 @@ class FileManager:
                 f.write(content)
         except Exception as e:  # pragma: no cover
             raise IOError(f"Error writing to file {file_path}: {e}") from e
+
+    # ------------------------------------------------------------------#
+    # Formatting helpers                                                #
+    # ------------------------------------------------------------------#
+    @staticmethod
+    def _detect_line_ending(text: str) -> str:
+        """
+        Detect the dominant line-ending style in *text*.
+        Returns "\\r\\n" for CRLF or "\\n" for LF. Defaults to LF.
+        """
+        crlf = text.count("\r\n")
+        lf = text.count("\n")
+        # Subtract CRLF occurrences from LF count because CRLF also
+        # increments the standalone LF counter when counting substrings.
+        lf -= crlf
+        return "\r\n" if crlf > lf else "\n"
+
+    def _preserve_formatting(self, original: str, updated: str) -> str:
+        """
+        Apply lightweight transformations so that *updated* honours the
+        basic formatting conventions of *original*:
+
+        1. Line-ending style (LF vs. CRLF)
+        2. Presence / absence of final trailing newline
+        """
+        if not original:
+            return updated  # Nothing to inherit
+
+        # --- 1. Line endings ------------------------------------------------
+        original_ending = self._detect_line_ending(original)
+        # Normalise `updated` to LF, then apply the desired style
+        normalised = updated.replace("\r\n", "\n")
+        if original_ending == "\r\n":
+            normalised = normalised.replace("\n", "\r\n")
+
+        # --- 2. Trailing newline -------------------------------------------
+        original_has_trailing_nl = original.endswith(original_ending)
+        updated_has_trailing_nl = normalised.endswith(original_ending)
+        if original_has_trailing_nl and not updated_has_trailing_nl:
+            normalised += original_ending
+        elif not original_has_trailing_nl and updated_has_trailing_nl:
+            normalised = normalised[: -len(original_ending)]
+
+        return normalised
