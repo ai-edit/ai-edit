@@ -15,6 +15,7 @@ from .config.manager import ConfigManager
 from .core.ai_client import AIClient
 from .core.context import ContextBuilder
 from .core.file_manager import FileManager
+from .utils.diff import apply_diff
 from .utils.parser import parse_ai_response
 
 
@@ -498,9 +499,22 @@ def edit(
             # ------------------------------------------------------------
             # Route based on *kind* and *diff_enabled* flag
             # ------------------------------------------------------------
-            if kind == "diff" and diff_enabled:
-                file_manager.apply_patch(file_path, content)
-                click.echo(f" - Applied patch to '{file_path}'")
+            if kind == "diff":
+                if diff_enabled:
+                    # Use patching mechanism (line-by-line)
+                    file_manager.apply_patch(file_path, content)
+                    click.echo(f" - Applied patch to '{file_path}'")
+                else:
+                    # Fallback: compute the full updated content and write it
+                    original_content = file_manager.get_file_contents(file_path)
+                    try:
+                        updated_content = apply_diff(original_content, content)
+                    except Exception as diff_err:
+                        raise RuntimeError(
+                            f"Failed to transform diff for '{file_path}': {diff_err}"
+                        ) from diff_err
+                    file_manager.apply_changes(file_path, updated_content)
+                    click.echo(f" - Replaced '{file_path}' with full content (diff downgraded)")
             else:
                 file_manager.apply_changes(file_path, content)
                 click.echo(f" - Applied changes to '{file_path}'")

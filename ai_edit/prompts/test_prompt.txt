@@ -1,1 +1,19 @@
-Read README.md and TODO.md to understand the project. Find the first failing test in pytest.log. You need to understand why it is not working and fix it. DO NOT replace existing functionality with placeholder. DO NOT truncate. DO NOT create stub implementations in order to pass the test. DO NOT delete functionality. DO NOT say the feature is not implemented in order to pass the test. DO NOT change anything else which is not related to the test. Generate the full file even if you want to replace a small part of it — we do not have the partial replacement implemented yet.
+Read README.md and TODO.md to understand the project.
+
+Find the first failing test in pytest.log.
+
+You need to understand why it is not working and fix it.
+
+DO NOT replace existing functionality with placeholder.
+
+DO NOT truncate.
+
+DO NOT create stub implementations in order to pass the test.
+
+DO NOT delete functionality.
+
+DO NOT say the feature is not implemented in order to pass the test.
+
+DO NOT change anything else which is not related to the test.
+
+Always generate the full content of each file, do not use placeholders.

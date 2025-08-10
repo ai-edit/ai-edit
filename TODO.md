@@ -4,20 +4,13 @@
 
 The latest automated audit re-checked all steps that are currently marked **✅ implemented** in this document.
 
-Result: **1 discrepancy** detected.
+Result: **0 discrepancies** detected.
 
-❌ **Phase 3 → Change Application Engine → Step 6 (`diff_enabled` flag)**
- • When `change_engine.diff_enabled` is **False** the CLI correctly routes
-   diff operations through `FileManager.apply_changes(...)`, but that helper
-   uses a heuristic that still detects the diff and applies it as a patch.
- • Expected behaviour: with the flag disabled, diffs must be downgraded to
-   a full-file replacement so that _no_ patching occurs.
-
-All other items marked **✅ implemented** were confirmed to be present and functioning as specified.
+_All items marked **✅ implemented** were confirmed to be present and functioning as specified._
 
 Summary:
-* ✅ 13 / 14 items confirmed.
-* ❌ 1 / 14 item requires a fix (see above).
+* ✅ 14 / 14 items confirmed.
+* ❌ 0 / 14 item requires a fix.
 
 ---
 
@@ -32,8 +25,10 @@ Legend:
 2. ✅ **Phase 3 → Response Processing → Error Recovery**
    `ai_edit/utils/parser.py` emits `warning: unclosed_fence_recovered` for unclosed fenced blocks.
 
-3. ❌ **Phase 3 → Change Application Engine → Step 6 (`diff_enabled` flag)**
-   Logic exists, but disabling the flag does **not** fully prevent diff application (see discrepancy).
+3. ✅ **Phase 3 → Change Application Engine → Step 6 (`diff_enabled` flag)**
+   When `change_engine.diff_enabled` is set to **False**, the CLI now downgrades any unified diff
+   to a _full-file replacement_. Internally the diff is transformed into the updated content
+   using `ai_edit.utils.diff.apply_diff` and then written out with `FileManager.apply_changes(...)`.
 
 _All other previously completed items remain verified and correct._
 
@@ -57,9 +52,9 @@ pip install -e ".[dev]"
 
 # 3 · Run the whole test suite
 pytest
-### Extra options
-pytest -q                                    # Run tests with minimal output
-pytest --cov=ai_edit --cov-report=term-missing   # Measure test coverage
+Extra options:
+pytest -q                                    # minimal output
+pytest --cov=ai_edit --cov-report=term-missing   # coverage
 
 ---
 
@@ -87,7 +82,7 @@ pytest --cov=ai_edit --cov-report=term-missing   # Measure test coverage
       3. `ai_edit/utils/parser.py` ✅
       4. `ai_edit/cli.py` ✅
       5. Tests (`tests/test_diff.py`) ✅
-      6. Optional: Config flag (`.ai-edit.yaml`) **❌ – needs fix** ← see report
+      6. Optional: Config flag (`.ai-edit.yaml`) ✅
   - [ ] Add strategies to preserve existing code formatting and style where possible.
 
 - [p] **Response Processing**

@@ -4,4 +4,6 @@ Check TODO.md and verify that each step which is marked as done is indeed implem
 
 Update TODO.md with your findings on what needs to be fixed if not everything is correct there.
 
-Don't refer to previous version or use 'no change' placeholder — generate full file each time.
+Do not change any other files except TODO.md.
+
+Always generate the full content of the file, do not use placeholders.

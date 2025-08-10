@@ -1,1 +1,5 @@
-Read README.md and TODO.md to understand the project. Find the first not implemented subfeature in TODO.md, however small, implement it, and mark it as done. Every time generate the full files even if you want to replace a small part of a file.
+Read README.md and TODO.md to understand the project.
+
+Find the first not implemented sub-feature in TODO.md, however small, implement it, and mark it as done.
+
+Always generate the full content of each file, do not use placeholders.
