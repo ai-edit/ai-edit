@@ -149,6 +149,7 @@ class NaturalLanguageGroup(click.Group):
 @click.option("--verbose", "-v", is_flag=True, help="Enable verbose output")
 @click.option("--debug", is_flag=True, help="Enable debug mode")
 @click.option(
+    "-f",
     "--prompt-file",
     "prompt_file",
     type=click.Path(exists=True, dir_okay=False, path_type=Path),
@@ -392,6 +393,7 @@ def _select_prompt_name(description: str) -> str:
     help="Interactive mode with confirmations",
 )
 @click.option(
+    "-f",
     "--prompt-file",
     "prompt_file",
     type=click.Path(exists=True, dir_okay=False, path_type=Path),
@@ -503,6 +505,7 @@ def edit(
             sys.exit(1)
     else:
         prompt_filename = _select_prompt_name(description or "")
+        click.echo(f"Using template prompt file: {prompt_filename}")
         try:
             prompt_template = (
                 resources.files("ai_edit")
